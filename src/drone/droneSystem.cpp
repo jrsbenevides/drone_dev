@@ -2,47 +2,26 @@
  * droneSystem.cpp
  *
  *  Created on: 16/06/2017
- *      Author: roberto
+ *      Author: rsinoue
  *      Modified: João Benevides - 07/Sep/2017
  */
 
-// Classe System
+// System Class
 
 #include "drone/droneSystem.h"
 
 namespace DRONE {
 
-	// CONSTRUCTOR
 	System::System() {
 
-		cout << "Starting Drone Node" << endl;
-
-		drone.setIsViconStarted(false);
-
-		count 	   		= 0;
-		countEKF		= 1;
-		PI 		 		= 3.141592653589793;
-		flagEnable 		= 0;
-		vxAmpl 			= 0;
-		vyAmpl 			= 0;
-		vzAmpl 			= 0;
-		angAmpl 		= 0;
-		f 				= 0;
-		amplitude 		= 0.8;
-		velMed      	= 0.1; //m/s
-		wAng 			= velMed/amplitude;
-		trajectory		= "circleXY";
-		controlSelect	= "PID";
-		flagTwist 		= true;
-		drone.setTimeNow(0);
+		initDroneParam();	
 
 		loadTopics(n);
+		
 		loadSettings(n);
 
-		// bootVicon();
 	}
 
-	// DESTRUCTOR
 	System::~System () {
 
 	}
@@ -60,7 +39,7 @@ namespace DRONE {
 	*	  Created by: jrsbenevides
 	*  Last Modified:
 	*
-	*  	 Description: 1. Sets to 'trajectory' global variable the one setted in config parameters file.
+	*  	 Description: 1. Sets to 'trajectory' global variable the one defined in config parameters file.
 	*				  (Notice that, in case name was wrongly assigned, DEFAULT_TRAJECTORY will be chosen instead)
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////		
@@ -171,6 +150,44 @@ namespace DRONE {
 	/* ###########################################################################################################################*/
 	/* ###########################################################################################################################*/
 	
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: initDroneParam
+	*	  Created by: jrsbenevides
+	*  Last Modified: jrsbenevides
+	*
+	*  	 Description: 1. Initialize essential functions for drone operation;
+	*				  2. Initialize parameters and default values;
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	void System::initDroneParam(void){
+
+		cout << "Starting Drone Node" << endl;
+
+		// Sets flag in order to halt Vicon acquisition and make sure it will be properly initialized once/if called.
+		drone.setIsViconStarted(false);
+		// Sets initial time
+		drone.setTimeNow(0);
+
+
+		//Starting or Default Values
+		count 	   		= 0;
+		countEKF		= 1;
+		PI 		 		= 3.141592653589793;
+		flagEnable 		= 0;
+		vxAmpl 			= 0;
+		vyAmpl 			= 0;
+		vzAmpl 			= 0;
+		angAmpl 		= 0;
+		f 				= 0;
+		amplitude 		= 0.8;
+		velMed      	= 0.1; //m/s
+		trajectory		= "circleXY";
+		controlSelect	= "PID";
+		flagTwist 		= true;
+
+		wAng 			= velMed/amplitude;
+	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/* 		Function: load Topics
