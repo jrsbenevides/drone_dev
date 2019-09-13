@@ -606,7 +606,7 @@ namespace DRONE {
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/* 		Function: waypointCallback
 	*	  Created by: jrsbenevides
-	*  Last Modified:
+	*  Last Modified: Sep 13th 2019
 	*
 	*  	 Description: Gets desired trajectories. Desired acceleration is computed based on the functions.
 	*
@@ -701,7 +701,6 @@ namespace DRONE {
 		}
 
 		//Acquire desired angular velocity and acceleration (Does NOT apply for "ident")
-
 		if(trajectory.compare("ident") != 0){
 		  	
 		  	dYawDesired = waypoint->twist.twist.angular.z;
@@ -721,9 +720,12 @@ namespace DRONE {
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/* 		Function: viconCallback
 	*	  Created by: jrsbenevides
-	*  Last Modified: March 8th 2018 - jrsbenevides
+	*  Last Modified: Sep 13th 2019
 	*
-	*  	 Description: 1. It is enabled only when 'VICON' is selected as sensor;
+	*  	 Description: General function for acquiring odometry data from VICON Motion Tracking System. Vicon measurement gives 
+	*				  global position but no velocity. A standard Kalman Filter was designed for velocity estimation
+	*		   Steps:
+	*  	 			  1. It is enabled only when 'VICON' is selected as sensor;
 	*				  2. Gets current time, position and orientation;
 	*				  3. Sets position now, because we need to compute velocity;
 	*				  4. Because Vicon sensor does not deliver either linear or angular velocity, we need estimate them through a
@@ -753,7 +755,7 @@ namespace DRONE {
 			
 			// cout << "time: "  << time 	<< endl;
 			
-			positionVicon	<< vicon->transform.translation.x, vicon->transform.translation.y, vicon->transform.translation.z; //gets current position
+			positionVicon	<< vicon->transform.translation.x, vicon->transform.translation.y, vicon->transform.translation.z;
 			drone.setPosition(positionVicon);
 			positionNow		= drone.getPosition();
 			// linearVel 		= drone.getLinearVelVicon(positionNow,positionPast,time,timePast); //global terms instead of local (IMU)
@@ -763,10 +765,6 @@ namespace DRONE {
 			orientationNow	= drone.getOrientation();
 			// angularVel 		= drone.getAngularVelVicon(orientationNow,orientationPast,time,timePast); //global terms instead of local (IMU)
 			angularVel 		= drone.DwKalman(orientationNow,time,timePast);
-			// cout << "\nPosition VICON:"	<< position.transpose() 	<< endl;
-			// cout << "\nPosition Now:" 	<< positionNow.transpose() 	<< endl;
-			// cout << "\nPosition Past:" 	<< positionPast.transpose() << endl;
-			// cout << "\nOrientation:" 	<< orientation.transpose() 	<< endl;
 
 			/*Reset frame location*/
 			if (!drone.getIsOdomStarted()) {
@@ -781,6 +779,7 @@ namespace DRONE {
 			
 			// cout << "Pose updated (VICON)" << endl;
 
+			//This will reset coordinate frame and set initial time as zero
 			if(!drone.getIsViconStarted()){
 				bootVicon(time);
 				drone.setIsViconStarted(true);
