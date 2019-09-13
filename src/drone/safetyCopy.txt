@@ -1,0 +1,118 @@
+		double a = 0.8;
+		double wang = 3.141592653/(6.097*a); //Copied from genTrajectory.cpp -> Change it automatically in the future.
+
+		Vector3axes eulerAngles,positionToGo,d2positionToGo;
+		VectorQuat quatAngles;
+		Vector4d pastPositionToGo, pastVelocityToGo;
+		double yaw, timeBefore;
+
+		pastPositionToGo = getPastTimePos();
+		pastVelocityToGo = getPastTimeVel();
+		timeBefore       = getPastTime();
+
+		positionToGo << waypoint->position.x,
+						waypoint->position.y,
+						waypoint->position.z;
+
+
+
+		// d2positionToGo << -wang*wang*positionToGo(1),
+		// 				  -4*wang*wang*positionToGo(2),
+		// 				  positionToGo(3);
+
+		cout << "positionDesired = [ " << positionToGo.transpose() << " ] " <<  endl;
+
+		quatAngles << waypoint->orientation.w,
+					  waypoint->orientation.x,
+					  waypoint->orientation.y,
+					  waypoint->orientation.z;
+
+		//Testar chamar em vez de quatAngles -> waypoint->pose.orientation
+		Conversion::quat2angleZYX(eulerAngles,quatAngles);
+
+		yaw  = eulerAngles(3);
+
+		cout << "yawDesired = [ " << yaw << " ] " <<  endl;
+
+		drone.setPositionDesired(positionToGo);
+
+		drone.setYawDesired(yaw);
+
+		drone.setd2PositionDesired(d2positionToGo);
+
+		drone.setd2YawDesired(0);
+
+
+
+//método 2 - testar!!!
+
+
+		double a = 0.8;
+		double wang = 3.141592653/(6.097*a); //Copied from genTrajectory.cpp -> Change it automatically in the future.
+
+		Vector3axes eulerAngles,positionToGo,d2positionToGo;
+		VectorQuat quatAngles;
+		Vector4d pastPositionToGo, pastVelocityToGo, positionToGoFull, d2positionToGoFull, dPositionToGo;
+		double yaw, timeBefore, deltaT, timeNow;
+
+		timeNow = ros::Time::now().toSec(); //IMPLEMENTAR
+
+		pastPositionToGo = drone.getPastTimePos();
+		pastVelocityToGo = drone.getPastTimeVel();
+		timeBefore       = drone.getPastTime();
+
+		/*Time Interval*/
+		deltaT = timeNow - timeBefore;
+
+		/*DEBUG*/
+
+		// pastPositionToGo = pastPositionToGo.Zero();
+		// pastVelocityToGo = pastVelocityToGo.Zero();
+		// d2positionToGoFull= d2positionToGoFull.Zero();
+
+		/*FIM DEBUG*/
+
+		positionToGo << waypoint->position.x,
+						waypoint->position.y,
+						waypoint->position.z;				
+
+		// d2positionToGo << -wang*wang*positionToGo(1),
+		// 				  -4*wang*wang*positionToGo(2),
+		// 				  positionToGo(3);
+
+		cout << "positionDesired = [ " << positionToGo.transpose() << " ] " <<  endl;
+
+		quatAngles << waypoint->orientation.w,
+					  waypoint->orientation.x,
+					  waypoint->orientation.y,
+					  waypoint->orientation.z;
+
+		//Testar chamar em vez de quatAngles -> waypoint->pose.orientation
+		Conversion::quat2angleZYX(eulerAngles,quatAngles);
+
+		yaw  = eulerAngles(3);
+
+		cout << "yawDesired = [ " << yaw << " ] " <<  endl;
+
+		positionToGoFull << positionToGo,
+							yaw;
+
+		dPositionToGo  << (positionToGoFull - pastPositionToGo)/deltaT;
+
+		d2positionToGoFull << (dPositionToGo - pastVelocityToGo)/deltaT;
+
+		d2positionToGo << d2positionToGoFull.head(3);
+
+		drone.setPastTimePos(positionToGoFull);
+
+		drone.setPastTimeVel(dPositionToGo);
+
+		drone.setPastTime(timeNow);
+
+		drone.setPositionDesired(positionToGo);
+
+		drone.setYawDesired(yaw);
+
+		drone.setd2PositionDesired(d2positionToGo);
+
+		drone.setd2YawDesired(d2positionToGoFull(4));

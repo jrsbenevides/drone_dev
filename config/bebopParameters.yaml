@@ -1,0 +1,134 @@
+# Identification trajectory parameters
+
+vxAmpl: 0.0    #0.2
+vyAmpl: 1.0    # 0.3
+vzAmpl: 0.0    # 1.0
+angAmpl: 0.0   #0.5
+f: 0.008       # 0.008 #0.003 #0.0005
+
+# ------------------ General parameters ------------------  
+
+#"FL" = Feedback Linearization - Bypassed ident
+#"PID"          = PID
+#"RLQR"         = Robust LQR
+#"SLQR"         = Standard LQR
+#"RecursiveLQR" = Recursive LQR
+#"Hinfinite"    = H-Infinite Controller
+	
+controlSelect: "Hinfinite"
+
+#"IMU" = IMU
+#"VICON"  = VICON
+
+
+sensorSelect : "VICON"
+
+# ------------------ Identified model parameters ------------------  
+
+# DRONE - ROBERTO
+# /*K for IMU*/
+# K: [1.7420, 0.9402, 1.5441, 0.8963, 3.3489, 3.2947, 6.5121, 3.9219]
+# K: [0.1614, -0.1665, 0.1562, -0.2210, 0.0036, -0.0639, 0.0783, 0.0651]
+# /*K for VICON*/
+# K: [2.6399, 0.1867, 2.6243, 0.1638, 3.0365, 3.2674, 4.7724, 2.4725]
+# /* K for VICON 15/10/2018 - Using updated ModelIdentification.m */
+
+K: [4.5752, 0.1149, 5.2296, 0.2364, 4.4206, 3.1341, 5.9289, -0.3868]
+# K: [3.4311, 0.2205, 3.5161, 0.2484, 1.3799, -0.3453, 1.3332, -1.1625]
+
+
+# DRONE - CROB - 01
+# K: [4.3321, 0.2333, 4.1220, 0.4145, 4.4206, 3.1341, 5.9289, -0.3868]
+
+# xy(com ident) [3.7305, 0.2143, 3.7966, 0.2774]
+
+# Online Identification - Extended Kalman Filter
+
+threshold: [0.001, 0.001, 0.001, 0.0875] # Error position tolerance
+# threshold: [1.0, 1.0, 1.0, 0.0875]
+
+# inputRange: 0.15
+inputRange: [1.0, 1.0, 1.0, 0.5]
+
+# ------------------ Online Identification  ------------------  
+
+# isEKFonline enables (true = 1) or disables (false = 0) online EKF estimation for deltaM and deltaN
+isEKFonline: 0
+
+updateRateEKF: 5
+
+Kstart: [1.7420, 0.9402, 1.5441, 0.8963, 3.3489, 3.2947, 6.5121, 3.9219]
+#[1, 1, 1, 1, 1, 1, 1, 1]
+
+
+# ------------------ PID control parameters ------------------  
+
+# Os parâmetros PID abaixo funcionaram bem na Vicon, para 100Hz.
+
+# Kp: [-0.70, -0.70, -2.75, -1.2]
+# Kd: [-0.75, -0.75, -0.75, -3.35]
+
+
+# Kp: [-0.5, -0.5, -0.5, -1.2] # before 12/04/2018
+
+
+# Kd: [-1.175, -1.175, -1.175, -3.35] # before 12/04/2018
+# Kd: [-1.175, -1.175, -1.175, -0.0]
+
+# Ki: [-0.0, -0.0, -0.0, -0.0] # before 12/04/2018
+Ki: [-0.01, -0.01, -0.01, -0.01]
+
+
+# ------------------ FL control parameters ------------------  
+
+KpFL: [1.33, 1.40, 3.50, 1.75]
+
+KdFL: [1.50, 1.50, 2.00, 2.00]
+
+
+
+# Os parâmetros PID abaixo funcionaram bem na Vicon, ainda melhor, para 100Hz.
+
+# Kp: [-0.5, -0.5, -0.5, -1.2]
+
+# Kd: [-0.5, -0.5, -0.5, -0.8]
+
+# Ki: [0.0, 0.0, 0.0, 0.0]
+
+# Kp: [-0.315, -0.002, -0.002, -0.002]
+
+# Kd: [-2.4, -0.0, -0.0, -0.0]
+
+# Ki: [-0.06, 0.0, 0.0, 0.0]
+
+# Parâmetros para Tuning do Feedbback Linearization.
+
+Kp: [-1.33, -1.40, -3.50, 0]
+
+Kd: [-1.50, -1.50, -2.00, 0]
+
+# Kp: [0.05, 0.05, 0.05, 1.2]
+
+# Kd: [0.05, 0.05, 0.05, 0.8]
+
+
+# Kp: [-5.0, -5.0, -0.04, -0.09]
+
+# Kd: [-1.0, -1.0, -0.06, -0.095]
+
+
+# ------------------ Trajectory Planner Parameters ------------------  
+
+# "eightShape"      = 8-shape  
+# "circleXY"        = circle in X-Y axis only 
+# "circleZXY"       = circle in X-Y-Z axis. 
+# "straightLine"    = point-to-point (x=y=amplitude)
+# "wayPoint"        = set point without acc and vel desired
+# "ident"           = Identification Flight = circleXY (30s) + sinus Z(30s) + sinus Yaw (remaining time)
+
+trajectory: "straightLine"
+velMed: 0.25
+amplitude: 0.5
+
+# In case we select "straightLine", we set poseDesired as: [Xd[m], Yd[m], Zd[m], Yawd[rad], Time[s]]
+poseDesired: [0.75, 0.75, 0.75, 0.0, 6.0]

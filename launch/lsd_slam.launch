@@ -1,0 +1,9 @@
+<!-- This will start LSD_SLAM. -->
+<launch>
+    <node name="lsd_slam_viewer" pkg="lsd_slam_viewer" type="viewer" output="screen"/>
+
+     <node name="lsd_slam_core" pkg="lsd_slam_core" type="live_slam" args="/image:=/bebop/image_raw _calib:=/home/roberto/Dropbox/Projects/catkin_ws/src/drone_dev/camera/bebop2LSD_SLAM2.txt" output="screen"/>  
+
+    <!-- <node name="lsd_slam_core" pkg="lsd_slam_core" type="live_slam" args="/image:=/bebop/image_raw /camera_info:=/bebop/camera_info" output="screen"/> -->
+
+</launch>

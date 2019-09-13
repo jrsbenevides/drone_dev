@@ -1,0 +1,5 @@
+<!-- This will start bebop_dev_node. -->
+<launch>
+    <rosparam command="load" file="$(find drone_dev)/config/bebopParameters.yaml" ns="drone" />
+    <node name="drone_dev" pkg="drone_dev" type="drone_dev_node" args="/drone/cmd_vel:=/bebop/cmd_vel  /drone/vicon:=/bebop/vicon /drone/transf_position:=/bebop/transf_position /drone/joy:=/bebop/joy  /drone/odom:=/bebop/odom /drone/waypoint:=/bebop/waypoint" output="screen"/>
+</launch>

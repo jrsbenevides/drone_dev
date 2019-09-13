@@ -1,0 +1,6 @@
+<!-- This will start bebop_dev_node. -->
+<launch>
+    <rosparam command="load" file="$(find drone_dev)/config/bebopParameters.yaml" ns="drone" />
+    <node name="drone_dev2" pkg="drone_dev" type="traj_generator_node" args="/drone/joy:=/bebop/joy  /drone/waypoint:=/bebop/waypoint" output="screen"/>
+</launch>
+

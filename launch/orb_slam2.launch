@@ -1,0 +1,4 @@
+<!-- This will start ORB_SLAM2. -->
+<launch>
+    <node name="ORB_SLAM2" pkg="ORB_SLAM2" type="Mono" args="$(find ORB_SLAM2)/Vocabulary/ORBvoc.txt $(find drone_dev)/camera/bebop2ORB_SLAM2.yaml /camera/image_raw:=/bebop/image_raw" output="screen"/>
+</launch>
