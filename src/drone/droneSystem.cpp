@@ -174,7 +174,7 @@ namespace DRONE {
 		count 	   		= 0;
 		countEKF		= 1;
 		PI 		 		= 3.141592653589793;
-		flagEnable 		= 0;
+		flagEnable 		= false;
 		vxAmpl 			= 0;
 		vyAmpl 			= 0;
 		vzAmpl 			= 0;
@@ -214,6 +214,7 @@ namespace DRONE {
 	*  Last Modified: jrsbenevides
 	*
 	*  	 Description: 1. Loads config parameters and loads them into the program by substituting previously created variables.
+	*                    Those can be edited in "config/bebopParameters.yaml"
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -358,62 +359,50 @@ namespace DRONE {
 
 	void System::bootVicon(const double& timeValue){
 		if(sensorSelect.compare("VICON") == 0){
-			
-			// while(!drone.getIsViconStarted()); 		// Waits for Vicon node to start publishing - Não funcionou!
+			//Sets current time value as t0
 			drone.setTimeOrigin(timeValue);
-			drone.setIsOdomStarted(false);		   	// Uses current parameter to update pose next time viconCallback is called (same as down button)
+			// Sets flag to reset coordinate frame
+			drone.setIsOdomStarted(false);		   	
 		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/* 		Function: control
 	*	  Created by: jrsbenevides
-	*  Last Modified:
+	*  Last Modified: 13 Sep 2019
 	*
 	*  	 Description: 1. This is the main control function. It depends on flagEnable (select button to run);
 	*				  2. Gets current position;
 	*				  3. Checks which controller to use. In case of PID, a reset of integral error is necessary and 
-	*					 flagControllerStarted needs to be handled;
-	*				  4. Gets the provided input and sets it to publish.
+	*					 flagControllerStarted for taking ;
+	*				  4. Gets the provided input publishes it.
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	// Função de Habilitação - Controle/Joystick
+
 	void System::control() {
+
 	  geometry_msgs::Twist cmd_vel_msg;
 	  Vector3axes 	position;
-	  Vector4d		xTemp;
-	  
-	  drone.setIsFlying(flagEnable); // 
+	  Vector4d		xTemp,input;
 
-	  if(flagEnable == 1) // Flag de habilitação do controlador
-	  {
+	  //This next if is useful for online EKF param estimation only - It has currently no use
+	  if(drone.getIsEKFonline()){	  
+	  	drone.setIsFlying(flagEnable); 
+	  }
+
+	  // This if is enabled by user through joystick (DEFAULT = hold SELECT button)
+	  if(flagEnable == true){ 
 
 		position = drone.getPosition();
-
-//		 Vector3axes positionDesired;
-//
-//		 positionDesired(0) = 0;
-//		 positionDesired(1) = 0;
-//		 positionDesired(2) = 0; //position(2);
-//
-//		 double yawDesired;
-//
-//		 yawDesired = 0;  // drone.getYaw()
-//
-//
-//		 drone.setPositionDesired(positionDesired);
-//		 drone.setYawDesired(yawDesired);
-
-
-		Vector4d input; // Local Variable
 
 		if(controlSelect.compare("PID") == 0){
 
 			cout << "### PID ###" << endl;
 			
-			if(flagControllerStarted == true){ // Flag de confirmação do controlador "once time"
-		  		drone.setXIntError(xTemp.Zero()); // Zera o erro integral
+			// Enters only during first loop after holding joystick button responsible for "flagEnable".
+			if(flagControllerStarted == true){ 
+		  		drone.setXIntError(xTemp.Zero()); // sets integral PID error as zero.
 		  		flagControllerStarted = false;
 	  		}
 		
@@ -451,7 +440,7 @@ namespace DRONE {
 
 		 cout << "inputCL = [" << input.transpose() << "]" << endl;
 
-		 // Load message var type
+		 // Build message
 	     cmd_vel_msg.linear.x  = input(0);
 	     cmd_vel_msg.linear.y  = input(1);
 	     cmd_vel_msg.linear.z  = input(2);
@@ -459,20 +448,22 @@ namespace DRONE {
 	     cmd_vel_msg.angular.y = 0;            
 	     cmd_vel_msg.angular.z = input(3);
 
-	     // PUBLISH MESSAGE
+	     // Publish input controller
 	     cmd_vel_publisher.publish(cmd_vel_msg);
+
+	     //This next if is useful for online EKF param estimation only - It has currently no use
 	     if(drone.getIsEKFonline()){
 	     	drone.setCmdVel(input);
 	     	if((countEKF % drone.getUpdateRateEKF()) == 0){
 	     		drone.setEKFToken(true); //Enables EKF computing every 10 iterations of control.
 	     		countEKF = 0;	
 	     	}
-	     	countEKF = countEKF + 1;
+	     	countEKF++;
 	     }
 	  }
 	  else{
 
-	  	flagControllerStarted = true;
+	  	flagControllerStarted = true; //Keeps track of flagEnable activation in order to zero PID integral error.
 
 	  }
 	}
@@ -492,7 +483,7 @@ namespace DRONE {
 	*
 	*  	 Description: Unused buttons were used to special functions. These features are described below:
 	*				  1. Button [14] = 'DIGITAL DOWN' = is responsible for resetting flag isOdomStarted. It allows the resetting of local
-						 frame;
+						 frame. The flag is raised again by a function "setPosition0()" after reset is done.
 	*				  2. Button [6]  = 'SELECT' =  when kept pressed, allows controller to run.
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
@@ -501,17 +492,15 @@ namespace DRONE {
 	{
       // geometry_msgs::Twist twist;
 
-      /*Command to reset frame location*/
       if (joy->buttons[14]) {
 		drone.setIsOdomStarted(false);
-      } //Não seria melhor por uma condição de falso aqui para subir o flag de novo?
+      } 
 
-      /*Enables "Automatic Control Mode" while pressing this button*/
 	  if(joy->buttons[6]){
-	    flagEnable = 1;
+	    flagEnable = true;
 	  }
 	  else{
-	  	flagEnable = 0;
+	  	flagEnable = false;
 	  }
 	}
 
@@ -520,30 +509,38 @@ namespace DRONE {
 	*	  Created by: rsinoue
 	*  Last Modified: jrsbenevides
 	*
-	*  	 Description: 1. It is enabled only when 'IMU' is selected as sensor;
+	*  	 Description: General function for acquiring odometry data. Inertial measurement gives global position but local 
+	*				  velocity. This is handled inside set functions, that converts it all to global with respect to the 
+	*				  defined global coordinate.
+	*		   Steps:
+	*				  1. It is enabled only when 'IMU' is selected as sensor;
 	*				  2. Gets current time, position, orientation, linear and angular velocity;
-	*				  3. Uses current position and orientation to set new coordinate frame in case that flag allows it do to so;
+	*				  3. Uses current position and orientation to set new coordinate frame in case that flag allows it do so;
 	*				  4. Sets time, position, orientation, linear and angular velocity in local terms;
-	*				  5. Gets current local position and orientation in order to call function globalToLocalPosition.
+	*				  5. Gets current local position and orientation in order to call function globalToLocalPosition that 
+	*					 publishes this info.
+	*
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void System::odomCallback(const nav_msgs::Odometry::ConstPtr& odom)	{
 		if(sensorSelect.compare("IMU") == 0){
-			/*Position and Linear Velocity are delivered with respect to global frame*/
-			/*angularVel(Ang Velocity) is same for both local and global frame*/
+			
 			Vector3axes position, positionLocal, angularVel, linearVel, rpy;
-			/*Orientation is same for both local and global frame*/
-			VectorQuat orientation, orientationLocal;
+			
+			VectorQuat  orientation, orientationLocal;
 
-			double timeNow, yawOdom;
+			double 		timeNow, yawOdom;
 
 			position 	<< odom->pose.pose.position.x, odom->pose.pose.position.y, odom->pose.pose.position.z;
 			linearVel 	<< odom->twist.twist.linear.x, odom->twist.twist.linear.y, odom->twist.twist.linear.z;
-			orientation << odom->pose.pose.orientation.w, odom->pose.pose.orientation.x, odom->pose.pose.orientation.y, odom->pose.pose.orientation.z;
+			orientation << odom->pose.pose.orientation.w, 
+						   odom->pose.pose.orientation.x, 
+						   odom->pose.pose.orientation.y, 
+						   odom->pose.pose.orientation.z;
 			angularVel 	<< odom->twist.twist.angular.x, odom->twist.twist.angular.y, odom->twist.twist.angular.z;
 			
-			timeNow = odom->header.stamp.toSec();
+			timeNow 	= odom->header.stamp.toSec();
 
 			/*Reset frame location*/
 			if (!drone.getIsOdomStarted()) {
@@ -569,7 +566,6 @@ namespace DRONE {
 
 			globalToLocalPosition(positionLocal, orientationLocal, linearVel, angularVel);
 		}
-
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -612,7 +608,9 @@ namespace DRONE {
 	*	  Created by: jrsbenevides
 	*  Last Modified:
 	*
-	*  	 Description: 1. Gets position and velocity desired;
+	*  	 Description: Gets desired trajectories. Desired acceleration is computed based on the functions.
+	*
+	*	       Steps: 1. Gets position and velocity desired;
 	*				  2. Because acceleration does not come in the message we need to calculate it in order to compute it
 	*					 in case of eightShape and circle trajectories;
 	*				  3. Checks which trajectory was chosen and computes acceleration accordingly;
@@ -624,7 +622,6 @@ namespace DRONE {
 		
 		Vector3axes eulerAngles,positionToGo, dpositionToGo, d2positionToGo;
 		VectorQuat quatAngles;
-		// Vector4d pastPositionToGo, pastVelocityToGo;
 
 		double yawAngle, yawDesired, dYawDesired, d2YawDesired;
 
@@ -636,81 +633,43 @@ namespace DRONE {
 						 waypoint->twist.twist.linear.y,
 						 waypoint->twist.twist.linear.z;
 
+		quatAngles 		<< 	waypoint->pose.pose.orientation.w,
+						  	waypoint->pose.pose.orientation.x,
+						  	waypoint->pose.pose.orientation.y,
+						  	waypoint->pose.pose.orientation.z;
 
-		if(trajectory.compare("eightShape") == 0){						 
+		Conversion::quat2angleZYX(eulerAngles,quatAngles);
+
+		yawDesired  = eulerAngles(2);						 
+
+
+		if(trajectory.compare("eightShape") == 0){	//Lemniscate of Gerono					 
 		
-			wAng = 2*PI*velMed/(6.097*amplitude);
+			wAng = 2*PI*velMed/(6.097*amplitude); //Based on total arc length of this shape
 			
 			d2positionToGo << -wAng*wAng*(waypoint->pose.pose.position.x),
 							  -4*wAng*wAng*(waypoint->pose.pose.position.y),
-							  0;
-			yawDesired  = 0.0;
-		  	dYawDesired = 0.0;	
-		  	d2YawDesired = 0.0;						  										  
-		
+							  0;			  										  
 		}
-		else if(trajectory.compare("circleXY") == 0){
+		else if(trajectory.compare("circleXY") == 0){ //Circle in the xy plane
 		
 			wAng = velMed/amplitude;
 			
 			d2positionToGo << -wAng*wAng*(waypoint->pose.pose.position.x),
 							  -wAng*wAng*(waypoint->pose.pose.position.y),
 							  0;		
-
-		    yawDesired  = 0.0;
-		 	dYawDesired = 0.0;	
-		 	d2YawDesired = 0.0;
-
-		 //  	quatAngles 		<< 	waypoint->pose.pose.orientation.w,
-			// 				  	waypoint->pose.pose.orientation.x,
-			// 				  	waypoint->pose.pose.orientation.y,
-			// 				  	waypoint->pose.pose.orientation.z;
-
-			// // //Testar chamar em vez de quatAngles -> waypoint->pose.orientation
-			// Conversion::quat2angleZYX(eulerAngles,quatAngles);
-
-			// yawDesired  = eulerAngles(2);
-		  	
-		 //  	dYawDesired = waypoint->twist.twist.angular.z;						  					
+					  					
 		}		
-		else if(trajectory.compare("circleZXY") == 0){
+		else if(trajectory.compare("circleZXY") == 0){ //Adds a circular component on z axis on the circleXY
 		
 			wAng = velMed/amplitude;
 			
 			d2positionToGo << -wAng*wAng*(waypoint->pose.pose.position.x),
 							  -wAng*wAng*(waypoint->pose.pose.position.y),											  
 							  -wAng*wAng*(waypoint->pose.pose.position.z);				
-			
-			// d2positionToGo << 0.0,
-			// 				  0.0,											  
-			// 				  0.0;			
-			
-			quatAngles 		<< 	waypoint->pose.pose.orientation.w,
-							  	waypoint->pose.pose.orientation.x,
-							  	waypoint->pose.pose.orientation.y,
-							  	waypoint->pose.pose.orientation.z;
-
-			// //Testar chamar em vez de quatAngles -> waypoint->pose.orientation
-			Conversion::quat2angleZYX(eulerAngles,quatAngles);
-
-			yawDesired  = eulerAngles(2);
-		  	
-		  	dYawDesired = waypoint->twist.twist.angular.z;
-		  	d2YawDesired = 0.0;
-
 		}
-		else if(trajectory.compare("ident") == 0){
+		else if(trajectory.compare("ident") == 0){ //For identifying the dynamic model
 			
-			quatAngles 		<< 	waypoint->pose.pose.orientation.w,
-							  	waypoint->pose.pose.orientation.x,
-							  	waypoint->pose.pose.orientation.y,
-							  	waypoint->pose.pose.orientation.z;
-
-			Conversion::quat2angleZYX(eulerAngles,quatAngles);
-
-			yawDesired  = eulerAngles(2);
-
-			//Atenção: Gambiarra!
 			if((yawDesired == 0)&&(flagTwist == true)){ //Significa que usamos o twist angular como aceleração linear desejada
 				d2positionToGo << waypoint->twist.twist.angular.x,
 							  	  waypoint->twist.twist.angular.y,											 
@@ -724,9 +683,7 @@ namespace DRONE {
 
 				flagTwist = false;
 
-				d2positionToGo << 0.0,
-							  	  0.0,											 
-							  	  0.0;	
+				d2positionToGo << 0.0,0.0,0.0;	
 
 				dYawDesired  = waypoint->twist.twist.angular.z;	
 				d2YawDesired = waypoint->twist.twist.angular.x;	
@@ -736,29 +693,21 @@ namespace DRONE {
 		}
 		else if(trajectory.compare("straightLine") == 0){
 
-			wAng = velMed/amplitude;
-
-			d2positionToGo << 	0,
-							  	0,
-							  	0;
-			yawDesired  = 0.0;
-		  	dYawDesired = 0.0;							  			
-		  	d2YawDesired = 0.0;
+			d2positionToGo << 	0,0,0;
 		}
 		else if(trajectory.compare("wayPoint") == 0){
 
-			wAng = velMed/amplitude;
-
-			d2positionToGo << 	0,
-							  	0,
-							  	0;
-			yawDesired  = 0.0;
-		  	dYawDesired = 0.0;							  			
-		  	d2YawDesired = 0.0;
+			d2positionToGo << 	0,0,0;
 		}
 
-		// cout << "positionDesired (local) = [ " << positionToGo.transpose() << " ] " <<  endl;
+		//Acquire desired angular velocity and acceleration (Does NOT apply for "ident")
 
+		if(trajectory.compare("ident") != 0){
+		  	
+		  	dYawDesired = waypoint->twist.twist.angular.z;
+		  	d2YawDesired = 0.0;
+		}
+	
 		drone.setPositionDesired(positionToGo);
 		drone.setYawDesired(yawDesired);
 

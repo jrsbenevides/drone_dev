@@ -619,8 +619,9 @@ namespace DRONE {
 	*	  Created by: jrsbenevides
 	*  Last Modified:
 	*
-	*  	 Description: 1. Sets the flag "isOdomStarted" that indicates when the frame must be reset;
-	* 				    		  
+	*  	 Description: 1. Sets the flag "isOdomStarted" that controls frame coordinate reset, i.e. 
+	*                    {x,y,z,phi,theta,psi} = {0,0,0,0,0,0};
+	*       		  P.S. "false" = Reset  		  
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

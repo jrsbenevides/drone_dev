@@ -58,8 +58,7 @@ namespace DRONE {
 		long int count;
 		long int countEKF;
 		
-		int 	 flagEnable;
-		
+		bool 	 flagEnable;
 		bool 	 flagControllerStarted;
 		bool 	 flagTwist;
 		
