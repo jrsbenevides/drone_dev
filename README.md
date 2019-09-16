@@ -50,6 +50,17 @@ This README would normally document whatever steps are necessary to get your app
 
 Refer to the pdf manual for a detailed description for operating this package.
 
+### Improvements for next version ###
+
+1. Define default parameters from functions setControlSelect, setSensorSelect and setTrajectory on  initDroneParam();
+2. Standardize VERBOSE for all of the controllers;
+3. Standardize flags to be bool private variables -->  use get and set to alter;
+4. Change IFs to SWITCH-CASE
+5. Pass desired linear and angular acceleration on genTrajectory.cpp (this will remove the necessity of knowing wAng
+in droneSystem.cpp and also will provide a cleaner solution for the "ident" trajectory)
+6. Implement control saturations with a single function on "control()"
+7.
+
 ### Who do I talk to? ###
 
 * Repo owner or admin
