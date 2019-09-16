@@ -723,7 +723,7 @@ namespace DRONE {
 	*  Last Modified: Sep 13th 2019
 	*
 	*  	 Description: General function for acquiring odometry data from VICON Motion Tracking System. Vicon measurement gives 
-	*				  global position but no velocity. A standard Kalman Filter was designed for velocity estimation
+	*				  global position but no velocity. A standard Kalman Filter was designed for velocity estimation.
 	*		   Steps:
 	*  	 			  1. It is enabled only when 'VICON' is selected as sensor;
 	*				  2. Gets current time, position and orientation;
@@ -742,56 +742,47 @@ namespace DRONE {
 
 		if(sensorSelect.compare("VICON") == 0){
 
-			Vector3axes positionVicon, positionPast, positionNow, positionLocal, angularVel, linearVel, rpy;
-			VectorQuat orientationVicon, orientationPast, orientationLocal,orientationNow;
+			Vector3axes positionVicon, positionNow, positionLocal, angularVel, linearVel, rpy;
+			VectorQuat orientationVicon, orientationLocal,orientationNow;
 
 			double time, timePast, yawVicon;
 
-			positionPast 	= drone.getPosition(); 		//Stores last known position as past.
-			orientationPast	= drone.getOrientation();	//Stores last known orientation as past.
 			timePast 		= drone.getTimeNow(); 		//Stores last known time as past.
 
 			time			= drone.getThisTime(vicon->header.stamp.toSec()); // returns time in sec after start
 			
-			// cout << "time: "  << time 	<< endl;
-			
 			positionVicon	<< vicon->transform.translation.x, vicon->transform.translation.y, vicon->transform.translation.z;
+			orientationVicon 	<< vicon->transform.rotation.w, vicon->transform.rotation.x, vicon->transform.rotation.y, vicon->transform.rotation.z;
+
 			drone.setPosition(positionVicon);
 			positionNow		= drone.getPosition();
-			// linearVel 		= drone.getLinearVelVicon(positionNow,positionPast,time,timePast); //global terms instead of local (IMU)
 			linearVel 		= drone.DvKalman(positionNow,time,timePast); //global terms instead of local (IMU)
-			orientationVicon 	<< vicon->transform.rotation.w, vicon->transform.rotation.x, vicon->transform.rotation.y, vicon->transform.rotation.z;
-			drone.setOrientation(orientationVicon); //ADD
+			
+			drone.setOrientation(orientationVicon);
 			orientationNow	= drone.getOrientation();
-			// angularVel 		= drone.getAngularVelVicon(orientationNow,orientationPast,time,timePast); //global terms instead of local (IMU)
 			angularVel 		= drone.DwKalman(orientationNow,time,timePast);
 
 			/*Reset frame location*/
 			if (!drone.getIsOdomStarted()) {
 				Conversion::quat2angleZYX(rpy,orientationVicon);
-				yawVicon = rpy(2); //add normalize?
+				yawVicon = rpy(2);
 				drone.setPosition0(positionVicon,yawVicon);
 				drone.setOrientation(orientationVicon);
 			}
 			
 			drone.setAngularVel(angularVel);
-			drone.setLinearVelVicon(linearVel); //Because Vicon velocity is obtained with respect to global coordinates we made another function to update values.
-			
-			// cout << "Pose updated (VICON)" << endl;
+			drone.setLinearVelVicon(linearVel);
 
 			//This will reset coordinate frame and set initial time as zero
 			if(!drone.getIsViconStarted()){
-				bootVicon(time);
+				bootVicon(time); 
 				drone.setIsViconStarted(true);
 			}
 
 			drone.setTimeNow(time); //Stores this time as current!
 
-			/*Envia mensagens de position corrigidas toda vez que uma nova mensagem de odom chega*/
-			/*nav_msgs::Odometry*/
-
+			//This will publish transformed positions and orientations in order to easier evaluate control performance (transf_position) 
 			globalToLocalPosition(positionNow, orientationNow,linearVel,angularVel);
 		}
-
 	}
-} // namespace DRONE
+}
