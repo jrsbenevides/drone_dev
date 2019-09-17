@@ -355,11 +355,11 @@ namespace DRONE {
 										
 					mGoal.pose.pose.position.x = 0;    
 					mGoal.pose.pose.position.y = 0;
-					mGoal.pose.pose.position.z = 0.5*amplitude*(cos(wAng*t)+cos(t));
+					mGoal.pose.pose.position.z = 0.5*amplitude*(sin(wAng*(t-40)+sin(t-40)));
 
 					mGoal.twist.twist.linear.x = 0;
 					mGoal.twist.twist.linear.y = 0;
-					mGoal.twist.twist.linear.z = -0.5*amplitude*(wAng*sin(wAng*t)+sin(t));
+					mGoal.twist.twist.linear.z = 0.5*amplitude*(wAng*cos(wAng*(t-40))+cos(t-40));
 
 					mGoal.pose.pose.orientation.x = 0.0;
 					mGoal.pose.pose.orientation.y = 0.0;
@@ -368,7 +368,7 @@ namespace DRONE {
 
 					mGoal.twist.twist.angular.x    = 0;
 					mGoal.twist.twist.angular.y    = 0;
-					mGoal.twist.twist.angular.z    = -0.5*amplitude*(wAng*wAng*cos(wAng*t)+cos(t));
+					mGoal.twist.twist.angular.z    = -0.5*amplitude*(wAng*wAng*sin(wAng*(t-40))+sin(t-40));
 
 				} else{
 										
@@ -380,7 +380,7 @@ namespace DRONE {
 					mGoal.twist.twist.linear.y = 0;
 					mGoal.twist.twist.linear.z = 0;
 
-					yaw_desired = angles::normalize_angle(0.5*1.05*(cos(wAng*t)+cos(t)));
+					yaw_desired = angles::normalize_angle(0.5*1.05*(sin(wAng*(t-80))+sin(t-80)));
 					
 					angle2quatZYX(quatDesired, yaw_desired, 0.0 , 0.0);
 
@@ -389,9 +389,9 @@ namespace DRONE {
 					mGoal.pose.pose.orientation.y = quatDesired(2);
 					mGoal.pose.pose.orientation.z = quatDesired(3);
 
-					mGoal.twist.twist.angular.x    = -0.5*1.05*(wAng*wAng*cos(wAng*t)+cos(t));
+					mGoal.twist.twist.angular.x    = -0.5*1.05*(wAng*wAng*sin(wAng*(t-80))+sin(t-80));
 					mGoal.twist.twist.angular.y    = 0.0;
-					mGoal.twist.twist.angular.z    = -0.5*1.05*(wAng*sin(wAng*t)+sin(t));
+					mGoal.twist.twist.angular.z    = 0.5*1.05*(wAng*cos(wAng*(t-80))+cos(t-80));
 				}							
 			} else if(trajectory.compare("circleZXY") == 0){
 
