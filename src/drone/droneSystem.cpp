@@ -660,13 +660,14 @@ namespace DRONE {
 		else if(trajectory.compare("ident") == 0){ //For identifying the dynamic model
 			
 			if((yawDesired == 0)&&(flagTwist == true)){ //Significa que usamos o twist angular como aceleração linear desejada
+				
 				d2positionToGo << waypoint->twist.twist.angular.x,
 							  	  waypoint->twist.twist.angular.y,											 
 							  	  waypoint->twist.twist.angular.z;	
 
-				dYawDesired = 0.0;
+				dYawDesired = 0.0;		
 
-				// cout << "################################################ T < 60 ########################################" << endl;							  	  
+				cout << "PART ONE 11111111" << endl;					  	  
 			}
 			else{ //Significa que usamos o twistangular z como vel ang desejada e twistangular x como acel ang desejada
 
@@ -677,7 +678,7 @@ namespace DRONE {
 				dYawDesired  = waypoint->twist.twist.angular.z;	
 				d2YawDesired = waypoint->twist.twist.angular.x;	
 
-				// cout << "################################################ YAAAAAW ########################################" << endl;
+				cout << "PART TWO 2222222" << endl;
 			}
 		}
 		else if(trajectory.compare("straightLine") == 0){

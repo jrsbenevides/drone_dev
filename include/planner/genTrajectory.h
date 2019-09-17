@@ -36,11 +36,12 @@ namespace DRONE {
 	  private:
 
 	  	bool   isControlStarted;
+		bool   isFirstTimePass;	  	
+
 		double PI;
 		double t;
 		double wAng;
 		double startTime;
-		bool   isFirstTimePass;
 	  
 	  public:
 		
@@ -53,7 +54,6 @@ namespace DRONE {
 		Planner();
 		~Planner ();
 		
-		// Drone drone;
 		void initPlanner(void);
 		void setTrajectory(const string& trajectoryInput);
 		void setIsControlStarted(bool state);
@@ -70,8 +70,6 @@ namespace DRONE {
 		void TrajPlanner(void);
 		void angle2quatZYX(VectorQuat& q, const double& yaw, const double& pitch, const double& roll);
 	};
-
-
 } // namespace DRONE
 
 

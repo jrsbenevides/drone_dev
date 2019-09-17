@@ -331,11 +331,10 @@ namespace DRONE {
 			} else if(trajectory.compare("ident") == 0){
 
 				cout << "Ident - Trajectory" << endl;
-			
 
 				if(t < 40)
 				{
-					mGoal.pose.pose.position.x = 0.5*amplitude*(sin(wAng*t)+sin(t));    
+					mGoal.pose.pose.position.x = 0.5*amplitude*(cos(wAng*t)+cos(t));    
 					mGoal.pose.pose.position.y = 0.5*amplitude*(sin(wAng*t)+sin(t)); 
 					mGoal.pose.pose.position.z = 0;
 
@@ -356,7 +355,7 @@ namespace DRONE {
 										
 					mGoal.pose.pose.position.x = 0;    
 					mGoal.pose.pose.position.y = 0;
-					mGoal.pose.pose.position.z = 0.5*amplitude*(sin(wAng*t)+sin(t));
+					mGoal.pose.pose.position.z = 0.5*amplitude*(cos(wAng*t)+cos(t));
 
 					mGoal.twist.twist.linear.x = 0;
 					mGoal.twist.twist.linear.y = 0;
