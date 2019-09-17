@@ -1,13 +1,13 @@
 /*
- * droneMain.cpp
+ * drone.cpp
  *
  * Created on: 08/07/2017
- *      Author: roberto
+ *      Author: rsinoue
  *
- * Modified on: 18/02/2018
- *			by: jrsbenevides and dalsochio
+ * Modified on: Sep 16th 2019
+ *			by: jrsbenevides
  *
- * Description: Every function that belongs to DRONE class.
+ * Description: Every function that belongs to the DRONE class.
  *
  *
  */
@@ -17,99 +17,9 @@
 
 namespace DRONE {
 
-	// CONSTRUCTOR
 	Drone::Drone() {
 
-		isOdomStarted 			= false;
-		isControllerStarted 	= true;
-		isEKFonline				= false;
-		isFirstEKFit			= true;
-		tokenEKF				= true;
-
-		position 				= position.Zero();
-		position0 				= position0.Zero();
-		positionDesired 		= positionDesired.Zero();
-		positionError 			= positionError.Zero();
-		dPosition 				= dPosition.Zero();
-		dPositionDesired 		= dPositionDesired.Zero();
-		dPositionError 			= dPositionError.Zero();
-		d2PositionDesired 		= d2PositionDesired.Zero();
-		dRPY 					= dRPY.Zero();
-		orientation 			<< 1, 0, 0, 0;
-		linearVel 				= linearVel.Zero();
-		angularVel 				= angularVel.Zero();
-		rpy 					= rpy.Zero();
-		roll 					= 0;
-		pitch 					= 0;
-		yaw 					= 0;
-		yaw0					= 0;
-		yawDesired 				= 0;
-		yawError 				= 0;
-		
-		timeNow 				= 0;
-		timePast 				= 0;
-		deltaTime				= 0;
-		tStart					= 0;
-
-		dYaw 					= 0;
-		dYawDesired 			= 0;
-		dYawError 				= 0;	
-		d2YawDesired 			= 0 ;
-
-		RotGlobal 				= RotGlobal.Identity();
-		Rotation 				= Rotation.Identity();
-
-		//K = K.Zero();
-		K 						<<  1.74199, 0.94016, 1.54413, 0.89628, 3.34885, 3.29467, 6.51209, 3.92187;
-		Kstart 					<<  1.00000, 1.00000, 1.00000, 1.00000, 1.00000, 1.00000, 1.00000, 1.00000;
-		F1 						= F1.Identity();
-		F2 						= F2.Identity();
-
-		Kp 						= Kp.Zero();
-		Kd 						= Kd.Zero();
-		Ki 						= Ki.Zero();
-
-		P 						= P.Identity();
-
-		u 						= u.Zero();
-		threshold 				= threshold.Zero();
-		input 					= input.Zero();
-		inputSat 				= inputSat.Zero();
-		inputRange 				= inputRange.Zero();
-
-		xIntError 				= xIntError.Zero();
-
-		A_kalman				= A_kalman.Identity();
-		P_kalman				= P_kalman.Identity();
-		PAng_kalman				= PAng_kalman.Identity();
-		Q_kalman				= 15*Q_kalman.Identity();
-		
-		Q_kalman.block<3,3>(0,0) <<  1,  0,  0,
-									 0,  1,  0,
-									 0,  0,  1;
-
-		R_kalman				= 0.1*R_kalman.Identity();
-
-		H_kalman				<< H_kalman.Zero();
-
-		H_kalman.block<3,3>(0,0) << 1, 0, 0, 
-								    0, 1, 0, 
-								    0, 0, 1;
-
-		x_kalman				= x_kalman.Zero();
-		xAng_kalman				= xAng_kalman.Zero();	
-
-		x_EKF					= x_EKF.Zero();
-		setXfromEKF(x_EKF);
-
-		F_EKF					= F_EKF.Identity();
-		Q_EKF					= Q_EKF.Identity();
-		R_EKF					= R_EKF.Identity();
-		P_EKF					= P_EKF.Identity();	
-
-		updateRateEKF 			= 10;	
-
-		Klqr 					= Klqr.Zero();					  
+		initDroneParam();							  
 	}
 
 	/* ###########################################################################################################################*/
@@ -205,10 +115,10 @@ namespace DRONE {
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/* 		Function: set Orientation
 	*	  Created by: rsinoue
-	*  Last Modified: jrsbenevides - Implementation of EKF for online estimation of K parameters
+	*  Last Modified: jrsbenevides
 	*
 	*  	 Description: 1. Gets a quaternion vector and defines it as current orientation;
-	*				  2. Converts the quaternion vetor into euler angles, roll, pitch and yaw, with yaw normalization;
+	*				  2. Converts the quaternion vector into euler angles, roll, pitch and yaw, with yaw normalization;
 	* 				  3. Calculate the current yaw error;
 	*				  4. Updates local rotation matrix;
 	*				  5. Runs EKF (if enabled) for online estimation of K;
@@ -228,119 +138,21 @@ namespace DRONE {
 		Matrix4x32 H;
 		Matrix32x4 Kk;
 
-		double sinyaw, cosyaw, yawErrorAux, ddyaw, dyaw;
+		double sinyaw, cosyaw, ddyaw, dyaw;
 
 		orientation = orientationValue;
 
 	    Conversion::quat2angleZYX(rpy,orientation);
 
-	    roll = rpy(0);
-
-	    pitch = rpy(1);
-
 	    yaw = angles::normalize_angle(rpy(2)-yaw0);
 
-	    // cout << "Yaw: " 		<< yaw 	<< endl;
-	    // cout << "Yaw_Zero: " 	<< yaw0 << endl;
-	    yawErrorAux = yawError;
-
 		yawError = angles::normalize_angle(yaw - yawDesired);
-	    cout << "Yaw Error: " << yawError 	<< endl;
-
-	    // if(abs(yawError - yawErrorAux) > 0.8){
-	    // 	for(int i=1;i<20;i++){
-	    // 		cout << "DEU PAU NO CALCULO DO ERRO!!!!" << endl;
-	    // 	}
-	    // }
 
 		sinyaw = sin(yaw);
 		cosyaw = cos(yaw);
 
 		Rotation.block<2,2>(0,0) << cosyaw, -sinyaw,
 				 	 	 	 	 	sinyaw,  cosyaw;
-
-		// Updates K after EKF estimation
-		if(getIsEKFonline() && getIsFlying() && getEKFToken()){
-			// setK(getKstart());
-			
-			x = getXfromEKF();
-			setEKFToken(false);
-
-			if(isFirstEKFit){
-				x 	  		 << x.Zero();
-				P_EKF 		 = P_EKF.Identity();
-				isFirstEKFit = false;
-				tStart       = getTimeNow();
-			}
-			
-			
-
-			// 1. DEFINE F,Q,R,P (OK) - Feito no construtor. Variável protegida acessível nas functions.
-			
-			// 2. Observation step (OK):
-			xFull   	= getKalmanX();
-			dposNow   	= xFull.segment<3>(3);
-			ddposNow  	= xFull.tail(3); //ddx ddy ddz (estimated linear acceleration) 
-			angFull 	= getKalmanXAngular();
-			dyaw    	= angFull(5);
-			ddyaw  	    = angFull(8); //ddyaw only
-
-			z 			<< ddposNow,
-			 	 		   ddyaw;	// global
-
-			
-			// 3. Estimation step (OK):
-			M << K(0)*cosyaw, -K(2)*sinyaw, 	0,      0,
-				 K(0)*sinyaw,  K(2)*cosyaw, 	0,      0,
-				 		   0,		  	 0,  K(4),   	0,
-				  		   0,            0,     0,   K(6);
-
-			N << K(1)*cosyaw, -K(3)*sinyaw, 	0,      0,
-				 K(1)*sinyaw,  K(3)*cosyaw, 	0,      0,
-				 	       0,			 0,  K(5),  	0,
-				  		   0,            0,     0,   K(7);
-
-			// cout << "MN Pass" << endl;
-			qdg 		<< dposNow,
-						   dyaw;
-			// cout << "qdg= " << qdg.transpose() << endl;
-
-			qdb 		= Rotation.transpose()*qdg;	//local					   
-			// cout << "qdb= " << qdb.transpose() << endl;
-			
-			v   = getCmdVel();
-			// cout << "v = " << v.transpose() << endl;
-
-			h << -(N+deltaN)*qdb + (M+deltaM)*v;
-			// cout << "h = " << h.transpose() << endl;
-
-			H << v(0), v(1), v(2), v(3),    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0, -qdb(0), -qdb(1), -qdb(2), -qdb(3),       0,       0,       0,       0,       0,       0,       0,       0,       0,    	0,    	 0,       0,
-        		    0,    0,    0,    0, v(0), v(1), v(2), v(3),    0,    0,    0,    0,    0,    0,    0,    0,       0,    	0,    	 0,       0, -qdb(0), -qdb(1), -qdb(2), -qdb(3),       0,       0,       0,       0,       0,    	0,    	 0,       0,
-        		  	0,    0,    0,    0,    0,    0,    0,    0, v(0), v(1), v(2), v(3),    0,    0,    0,    0,       0,    	0,    	 0,       0,       0,       0,       0,       0, -qdb(0), -qdb(1), -qdb(2), -qdb(3),       0,    	0,    	 0,       0,
-        		  	0,    0,    0,    0,    0,    0,    0,    0,  	0,    0,    0,    0, v(0), v(1), v(2), v(3),       0,    	0,    	 0,       0,       0,       0,       0,       0,       0,       0,    	 0,       0, -qdb(0), -qdb(1), -qdb(2), -qdb(3);
-			// cout << "H = " << h.transpose() << endl;             			   
-
-			// 4. Extended Kalman Filter (OK)
-			x 		<< F_EKF*x;			
-			P_EKF 	<< F_EKF*P_EKF*F_EKF.transpose() + Q_EKF;
-			
-			y   	= z - h;
-			S   	= H*P_EKF*H.transpose() + R_EKF;
-			Kk 		= P_EKF*H.transpose()*S.inverse();
-			
-			x 		= x + Kk*y;
-			P_EKF 	= P_EKF - Kk*H*P_EKF;
-
-			// 5. Save data for next iteration (OK)
-
-			setXfromEKF(x);
-			
-			cout << "\n\nx = " << x.transpose() << "\n\n" << endl;	  				
-		} else{
-			isFirstEKFit = true;
-		}				 	 	 	 	 
-
-		cout << "K atual = " << K.transpose() << endl;
 
 		F1 << K(0)*cosyaw, -K(2)*sinyaw, 	0,      0,
 			  K(0)*sinyaw,  K(2)*cosyaw, 	0,      0,
@@ -351,14 +163,6 @@ namespace DRONE {
 			  K(1)*sinyaw,  K(3)*cosyaw, 	0,      0,
 			  			0,			  0, K(5),  	0,
 			  			0,            0,    0,   K(7);
-
-		if((getTimeNow() - tStart) > 0){
-			
-			F1 << F1 + deltaM;
-			F2 << F2 + deltaN;			  				
-
-		}
-
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -366,10 +170,9 @@ namespace DRONE {
 	*	  Created by: rsinoue
 	*  Last Modified: jrsbenevides - Considering rotation and not only translation to describe the new frame.
 	*
-	*  	 Description: 1. Gets a linear velocity vector from IMU and stores it as 'dPosition' (because IMU provides local velocity information);
+	*  	 Description: 1. Gets a linear velocity vector from IMU and stores it as 'dPosition' (because IMU provides local 
+	*					 velocity information);
 	*				  2. Computes velocity error based on local rotation matrix (because velocity error is defined globally);
-	* 				  
-	* 				  
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -385,10 +188,9 @@ namespace DRONE {
 	*	  Created by: jrsbenevides on Feb.2018
 	*  Last Modified: 
 	*
-	*  	 Description: 1. Gets a linear velocity vector from Vicon cameras and stores it as 'dPosition' after converting it back to local frame coordinates;
+	*  	 Description: 1. Gets a linear velocity vector from Vicon cameras and stores it as 'dPosition' after converting it back 
+	*					 to local frame coordinates;
 	*				  2. Computes velocity error (because velocity has changed);
-	* 				  
-	* 				  
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -460,8 +262,6 @@ namespace DRONE {
 	void Drone::setYawDesired(const double& yawValue) {
 		yawDesired = yawValue;
 		yawError = angles::normalize_angle(yaw - yawDesired);
-		// cout << "\n\nYaw Desired:" << yawDesired << "\n\n" << endl;
-		// cout << "\n\nYaw Error:" << yawError << "\n\n" << endl;
 	}
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -501,7 +301,6 @@ namespace DRONE {
 	*  Last Modified:
 	*
 	*  	 Description: 1. Gets a 4x4 matrix and defines it as the proportional gain for the PID control/Feedback Linearization;
-	* 				    		  
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -515,7 +314,6 @@ namespace DRONE {
 	*  Last Modified:
 	*
 	*  	 Description: 1. Gets a 4x4 matrix and defines it as the derivative gain for the PID control/Feedback Linearization;
-	* 				    		  
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -529,7 +327,6 @@ namespace DRONE {
 	*  Last Modified:
 	*
 	*  	 Description: 1. Gets a 4x4 matrix and defines it as the integral gain for the PID control/Feedback Linearization;
-	* 				    		  
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -542,8 +339,7 @@ namespace DRONE {
 	*	  Created by: jrsbenevides on Feb. 2018
 	*  Last Modified:
 	*
-	*  	 Description: 1. Updates current error integral for PID control;
-	* 				    		  
+	*  	 Description: 1. Updates current error integral for PID control;	    		  
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -575,15 +371,13 @@ namespace DRONE {
 	*	  Created by: jrsbenevides
 	*  Last Modified:
 	*
-	*  	 Description: 1. Sets a threshold to the position and yaw error (Due to precision error, we decided to send 0 input when absolute 
-	*					 error is less than defined 'threshold' value);
-	* 				    		  
+	*  	 Description: 1. Sets a threshold to the position and yaw error (Due to precision error, we decided to send a null 
+	*					 input when absolute error is less than the pre-defined 'threshold' value); 
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void Drone::setThreshold(const Vector4d& upperLimit) {
 		threshold = upperLimit;
-		cout << "### Threshold = " << threshold.transpose() << " ###" << endl;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -591,8 +385,7 @@ namespace DRONE {
 	*	  Created by: jrsbenevides
 	*  Last Modified:
 	*
-	*  	 Description: 1. Sets the saturation range for the allowable inputs;
-	* 				    		  
+	*  	 Description: 1. Sets the saturation range for the allowable inputs;	  
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -606,7 +399,6 @@ namespace DRONE {
 	*  Last Modified:
 	*
 	*  	 Description: 1. Sets the initialization time as 'timeOrigin' right after ViconCallback starts to acquire data;
-	* 				    		  
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -620,8 +412,8 @@ namespace DRONE {
 	*  Last Modified:
 	*
 	*  	 Description: 1. Sets the flag "isOdomStarted" that controls frame coordinate reset, i.e. 
-	*                    {x,y,z,phi,theta,psi} = {0,0,0,0,0,0};
-	*       		  P.S. "false" = Reset  		  
+	*                    {x,y,z,phi,theta,psi} => {0,0,0,0,0,0};
+	*       	P.S.: DEFAULT = 'true', i.e. a flag set as 'false' will reset the coordinate frame.  		  
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -634,8 +426,7 @@ namespace DRONE {
 	*	  Created by: jrsbenevides
 	*  Last Modified:
 	*
-	*  	 Description: 1. Sets the flag "isVicontarted" that controls first call of Vicon data;
-	* 				    		  
+	*  	 Description: 1. Sets the flag "isViconStarted" that controls first call of Vicon data;		    		  
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -648,8 +439,8 @@ namespace DRONE {
 	*	  Created by: jrsbenevides
 	*  Last Modified:
 	*
-	*  	 Description: 1. Sets the flag "isEKFonline" to enable/disable online EKF estimation for K parameters;
-	* 				    		  
+	*  	 Description: 1. Sets the flag "isEKFonline" to enable/disable online EKF estimation for K parameters; 
+	*					 This feature will be available in future versions only. DEFAULT = 'false'
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -657,25 +448,80 @@ namespace DRONE {
 		isEKFonline = value;
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: setUpdateRateEKF
+	*	  Created by: jrsbenevides
+	*  Last Modified:
+	*
+	*  	 Description: 1. For future use only;  
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	void Drone::setUpdateRateEKF(const int& value) {
 		updateRateEKF = value;
 	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: setKalmanX
+	*	  Created by: jrsbenevides
+	*  Last Modified:
+	*
+	*  	 Description: 1. Sets Kalman State Matrix for computing position;
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void Drone::setKalmanX(const Vector9d& value) {
 		x_kalman = value;
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: setKalmanP
+	*	  Created by: jrsbenevides
+	*  Last Modified:
+	*
+	*  	 Description: 1. Sets Kalman P Matrix - Position;
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
 	void Drone::setKalmanP(const Matrix9d& value) {
 		P_kalman = value;
 	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: setKalmanXAngular
+	*	  Created by: jrsbenevides
+	*  Last Modified:
+	*
+	*  	 Description: 1. Sets Kalman State Matrix for computing angular speed;
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 	void Drone::setKalmanXAngular(const Vector9d& value) {
 		xAng_kalman = value;
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: setKalmanPAngular
+	*	  Created by: jrsbenevides
+	*  Last Modified:
+	*
+	*  	 Description: 1. Sets Kalman Matrix - Angular;
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	void Drone::setKalmanPAngular(const Matrix9d& value) {
 		PAng_kalman = value;
 	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: setXfromEKF
+	*	  Created by: jrsbenevides
+	*  Last Modified:
+	*
+	*  	 Description: 1. For future use only. This feature will be available in a future version;
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void Drone::setXfromEKF(const Vector32x1& value){
 		x_EKF = value;
@@ -688,13 +534,40 @@ namespace DRONE {
 		}
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: setCmdVel
+	*	  Created by: jrsbenevides
+	*  Last Modified:
+	*
+	*  	 Description: 1. Stores vector of control input. For future use only. This feature will be available in a future version;
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	void Drone::setCmdVel(const Vector4d& value){
 		cmdvelMsg = value;
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: setIsFlying
+	*	  Created by: jrsbenevides
+	*  Last Modified:
+	*
+	*  	 Description: 1. For future use only. This feature will be available in a future version;
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	void Drone::setIsFlying(const bool& value){
 		isDroneFlying = value;
 	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: setEKFToken
+	*	  Created by: jrsbenevides
+	*  Last Modified:
+	*
+	*  	 Description: 1. For future use only. This feature will be available in a future version;
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void Drone::setEKFToken(const bool& value){
 		tokenEKF = value;
@@ -712,8 +585,7 @@ namespace DRONE {
 	*	  Created by: jrsbenevides/rsinoue
 	*  Last Modified:
 	*
-	*  	 Description: Below are the standard getters methods;
-	* 				    		  
+	*  	 Description: Below are the standard getters methods;		  
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -844,7 +716,6 @@ namespace DRONE {
 	bool Drone::getEKFToken(void){
 		return tokenEKF;
 	}
-		
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/* 		Function: get This Time
@@ -889,6 +760,154 @@ namespace DRONE {
 		
 		return linearVelVicon;
 	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: get Angular Vel Vicon
+	*	  Created by: jrsbenevides
+	*  Last Modified:
+	*
+	*  	 Description: 1. Receive as arguments the current quaternion vector, the past quaternion vector and its times;
+	*                 2. Convert the 4x1 quaternions vectors to 3x1 euler angles vector;
+	* 				  3. Compute the 'delta' time;	
+	* 				  4. Compute the discrete angular velocity (by subtraction of current and past angle vectors), called 'angularVelVicon' and return it;		  
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	Vector3axes Drone::getAngularVelVicon(const VectorQuat& orientCurrent, const VectorQuat& orientPast, const double& timeNow, const double& timePast){
+		
+		double timeDiff,angRoll,angPitch,angYaw;
+		Vector3axes angularVelVicon,rpyCurrent, rpyPast;
+		
+	    Conversion::quat2angleZYX(rpyCurrent,orientCurrent);
+	    Conversion::quat2angleZYX(rpyPast,orientPast);
+		
+		timeDiff 		= timeNow - timePast;
+		angRoll 	= angles::normalize_angle(rpyCurrent(0) - rpyPast(0));
+		angPitch 	= angles::normalize_angle(rpyCurrent(1) - rpyPast(1));
+		angYaw 		= angles::normalize_angle(rpyCurrent(2) - rpyPast(2));
+		angularVelVicon 	<<  angRoll,
+								angPitch, 
+								angYaw;
+								
+		angularVelVicon *= (1/timeDiff);							
+		
+		return angularVelVicon;
+	}
+
+	/* ###########################################################################################################################*/
+	/* ###########################################################################################################################*/
+	/* #####################################            REGULAR FUNCTIONS                 ########################################*/
+	/* ###########################################################################################################################*/
+	/* ###########################################################################################################################*/
+	
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: initDroneParam
+	*	  Created by: jrsbenevides
+	*  Last Modified: Sep 16th 2019
+	*
+	*  	 Description: 1. Initialize essential functions for drone operation;
+	*				  2. Initialize parameters and default values;		  
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	void Drone::initDroneParam(void){
+
+		isOdomStarted 			= false;
+		isControllerStarted 	= true;
+		isEKFonline				= false;
+		isFirstEKFit			= true;
+		tokenEKF				= true;
+
+		position 				= position.Zero();
+		position0 				= position0.Zero();
+		positionDesired 		= positionDesired.Zero();
+		positionError 			= positionError.Zero();
+		dPosition 				= dPosition.Zero();
+		dPositionDesired 		= dPositionDesired.Zero();
+		dPositionError 			= dPositionError.Zero();
+		d2PositionDesired 		= d2PositionDesired.Zero();
+		dRPY 					= dRPY.Zero();
+		orientation 			<< 1, 0, 0, 0;
+		linearVel 				= linearVel.Zero();
+		angularVel 				= angularVel.Zero();
+		rpy 					= rpy.Zero();
+		roll 					= 0;
+		pitch 					= 0;
+		yaw 					= 0;
+		yaw0					= 0;
+		yawDesired 				= 0;
+		yawError 				= 0;
+		
+		timeNow 				= 0;
+		timePast 				= 0;
+		deltaTime				= 0;
+		tStart					= 0;
+
+		dYaw 					= 0;
+		dYawDesired 			= 0;
+		dYawError 				= 0;	
+		d2YawDesired 			= 0 ;
+
+		RotGlobal 				= RotGlobal.Identity();
+		Rotation 				= Rotation.Identity();
+
+		//K = K.Zero();
+		K 						<<  1.74199, 0.94016, 1.54413, 0.89628, 3.34885, 3.29467, 6.51209, 3.92187;
+		Kstart 					<<  1.00000, 1.00000, 1.00000, 1.00000, 1.00000, 1.00000, 1.00000, 1.00000;
+		F1 						= F1.Identity();
+		F2 						= F2.Identity();
+
+		Kp 						= Kp.Zero();
+		Kd 						= Kd.Zero();
+		Ki 						= Ki.Zero();
+
+		P 						= P.Identity();
+
+		u 						= u.Zero();
+		threshold 				= threshold.Zero();
+		input 					= input.Zero();
+		inputSat 				= inputSat.Zero();
+		inputRange 				= inputRange.Zero();
+
+		xIntError 				= xIntError.Zero();
+
+		A_kalman				= A_kalman.Identity();
+		P_kalman				= P_kalman.Identity();
+		PAng_kalman				= PAng_kalman.Identity();
+		Q_kalman				= 15*Q_kalman.Identity();
+		
+		Q_kalman.block<3,3>(0,0) <<  1,  0,  0,
+									 0,  1,  0,
+									 0,  0,  1;
+
+		R_kalman				= 0.1*R_kalman.Identity();
+
+		H_kalman				<< H_kalman.Zero();
+
+		H_kalman.block<3,3>(0,0) << 1, 0, 0, 
+								    0, 1, 0, 
+								    0, 0, 1;
+
+		x_kalman				= x_kalman.Zero();
+		xAng_kalman				= xAng_kalman.Zero();	
+
+		x_EKF					= x_EKF.Zero();
+		setXfromEKF(x_EKF);
+
+		F_EKF					= F_EKF.Identity();
+		Q_EKF					= Q_EKF.Identity();
+		R_EKF					= R_EKF.Identity();
+		P_EKF					= P_EKF.Identity();
+
+		deltaM           		= deltaM.Zero();
+		deltaN           		= deltaN.Zero();
+
+		updateRateEKF 			= 10;	
+
+		Klqr 					= Klqr.Zero();
+	}
+
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/* 		Function: DvKalman
@@ -945,39 +964,6 @@ namespace DRONE {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/* 		Function: get Angular Vel Vicon
-	*	  Created by: jrsbenevides
-	*  Last Modified:
-	*
-	*  	 Description: 1. Receive as arguments the current quaternion vector, the past quaternion vector and its times;
-	*                 2. Convert the 4x1 quaternions vectors to 3x1 euler angles vector;
-	* 				  3. Compute the 'delta' time;	
-	* 				  4. Compute the discrete angular velocity (by subtraction of current and past angle vectors), called 'angularVelVicon' and return it;		  
-	*/
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	Vector3axes Drone::getAngularVelVicon(const VectorQuat& orientCurrent, const VectorQuat& orientPast, const double& timeNow, const double& timePast){
-		
-		double timeDiff,angRoll,angPitch,angYaw;
-		Vector3axes angularVelVicon,rpyCurrent, rpyPast;
-		
-	    Conversion::quat2angleZYX(rpyCurrent,orientCurrent);
-	    Conversion::quat2angleZYX(rpyPast,orientPast);
-		
-		timeDiff 		= timeNow - timePast;
-		angRoll 	= angles::normalize_angle(rpyCurrent(0) - rpyPast(0));
-		angPitch 	= angles::normalize_angle(rpyCurrent(1) - rpyPast(1));
-		angYaw 		= angles::normalize_angle(rpyCurrent(2) - rpyPast(2));
-		angularVelVicon 	<<  angRoll,
-								angPitch, 
-								angYaw;
-								
-		angularVelVicon *= (1/timeDiff);							
-		
-		return angularVelVicon;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/* 		Function: DwKalman
 	*	  Created by: jrsbenevides
 	*  Last Modified:
@@ -1031,7 +1017,7 @@ namespace DRONE {
 		return estAngularVel;
 	}	
 
-		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/* 		Function: get Hinf Control Law
 	*	  Created by: jrsbenevides
 	*  Last Modified:

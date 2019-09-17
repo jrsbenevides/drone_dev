@@ -83,7 +83,7 @@ namespace DRONE {
 		void waypointCallback(const nav_msgs::Odometry::ConstPtr& waypoint); //alterado
 		void viconCallback(const geometry_msgs::TransformStamped::ConstPtr& vicon);
 		void globalToLocalPosition(const Vector3axes& positionValue, const VectorQuat& orientationValue, const Vector3axes& linearVelValue,const Vector3axes& angularVelValue);
-		void initDroneParam(void);
+		void initDroneSystemParam(void);
 		void loadTopics(ros::NodeHandle &n);
 		void loadSettings(ros::NodeHandle &n);
 		void setTrajectory(const string& trajectoryInput);

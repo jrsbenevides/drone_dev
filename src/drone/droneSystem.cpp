@@ -14,7 +14,7 @@ namespace DRONE {
 
 	System::System() {
 
-		initDroneParam();	
+		initDroneSystemParam();	
 
 		loadTopics(n);
 		
@@ -152,7 +152,7 @@ namespace DRONE {
 	
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/* 		Function: initDroneParam
+	/* 		Function: initDroneSystemParam
 	*	  Created by: jrsbenevides
 	*  Last Modified: jrsbenevides
 	*
@@ -160,7 +160,7 @@ namespace DRONE {
 	*				  2. Initialize parameters and default values;
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	void System::initDroneParam(void){
+	void System::initDroneSystemParam(void){
 
 		cout << "Starting Drone Node" << endl;
 
@@ -450,16 +450,6 @@ namespace DRONE {
 
 	     // Publish input controller
 	     cmd_vel_publisher.publish(cmd_vel_msg);
-
-	     //This next if is useful for online EKF param estimation only - It has currently no use
-	     if(drone.getIsEKFonline()){
-	     	drone.setCmdVel(input);
-	     	if((countEKF % drone.getUpdateRateEKF()) == 0){
-	     		drone.setEKFToken(true); //Enables EKF computing every 10 iterations of control.
-	     		countEKF = 0;	
-	     	}
-	     	countEKF++;
-	     }
 	  }
 	  else{
 

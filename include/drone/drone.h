@@ -195,6 +195,7 @@ namespace DRONE {
 			Vector32x1	getXfromEKF(void);
 			Vector4d 	getCmdVel(void);		
 			
+			void 		initDroneParam(void);
 			void 		RLQR(Matrix8d& L, Matrix4x8& Krlqr, const Matrix8d& F, const Matrix8x4& G, const Matrix4d& Rr, const Matrix8d& Qr);
 			void 		RecursiveLQR(Matrix4x8& Klqr, const Matrix8d& F, const Matrix8x4& G, const Matrix4d& Rr, const Matrix8d& Qr);
 			bool 		getIsOdomStarted(void);
