@@ -1,8 +1,8 @@
 /*
  * droneSystem.h
  *
- *  Created on: 16/06/2017
- *      Author: roberto
+ *  Created on: 16/09/2019
+ *      Author: jrsbenevides
  */
 
 #ifndef GENTRAJECTORY_H_
@@ -23,8 +23,6 @@
 #include <string>
 #include <iostream>
 
-// #include "drone/drone.h"
-
 using namespace std;
 
 namespace DRONE {
@@ -40,9 +38,9 @@ namespace DRONE {
 	  	bool   isControlStarted;
 		double PI;
 		double t;
-		double wAng; // w = 2*pi*vel_media/(6.097*a);
+		double wAng;
 		double startTime;
-		bool   firstTimePass;
+		bool   isFirstTimePass;
 	  
 	  public:
 		
@@ -56,18 +54,20 @@ namespace DRONE {
 		~Planner ();
 		
 		// Drone drone;
-
+		void initPlanner(void);
+		void setTrajectory(const string& trajectoryInput);
 		void setIsControlStarted(bool state);
+		void setIsFirstTimePass(bool state);
 		void setposeDesired(VectorFive poseDesiredValue);
 		void setTrajectoryCoefficients(void);
 		bool getIsControlStarted(void);
+		bool getIsFirstTimePass(void);
 		VectorFive getposeDesired(void);
 		void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
 		void loadTopics(ros::NodeHandle &n);
 		void loadSettings(ros::NodeHandle &n);
 		void refreshWang(void);
 		void TrajPlanner(void);
-		void setTrajectory(const string& trajectoryInput);
 		void angle2quatZYX(VectorQuat& q, const double& yaw, const double& pitch, const double& roll);
 	};
 

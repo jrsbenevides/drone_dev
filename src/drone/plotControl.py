@@ -56,14 +56,12 @@ def callbackWaypoint(data2):
 def listener():
 	global vector, matWp
 
-	# Inicializa as matrizes vector e matWp
 	vector = np.zeros((k,3))
 	matWp = np.zeros((k,3))
 
 	rospy.init_node('listener', anonymous=True)
 	rospy.Subscriber('/bebop/transf_position',  Odometry, callbackOdom)
 	rospy.Subscriber('/bebop/waypoint', Odometry, callbackWaypoint)
-	# rospy.spin()
 	rate = rospy.Rate(2) # 2hz
 
 	while not rospy.is_shutdown():
@@ -77,8 +75,7 @@ def myPlot():
 	if ctOdom > k and ctWp > k :
 		plt.clf()
 		plt.plot(matWp[:,0],  matWp[:,1],'bo')
-		plt.plot(vector[:,0],vector[:,1],'go')
-		# plt.axis("equal")	  
+		plt.plot(vector[:,0],vector[:,1],'go') 
 		plt.axis([-1.2, 1.2, -1.2, 1.2])	  
 		plt.draw()
 		plt.pause(1e-11)

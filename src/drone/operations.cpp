@@ -10,41 +10,49 @@
 
 namespace DRONE {
 
-
-
-//	VectorQuat Conversion::angle2quatZYX(const double& yaw, const double& pitch, const double& roll){
-//		VectorQuat q; // q = [w, x, y, z]'
-//		q(0) = cos(0.5*yaw)*cos(0.5*pitch)*cos(0.5*roll) + sin(0.5*yaw)*sin(0.5*pitch)*sin(0.5*roll);
-//		q(1) = cos(0.5*yaw)*cos(0.5*pitch)*sin(0.5*roll) - sin(0.5*yaw)*sin(0.5*pitch)*cos(0.5*roll);
-//		q(2) = cos(0.5*yaw)*sin(0.5*pitch)*cos(0.5*roll) + sin(0.5*yaw)*cos(0.5*pitch)*sin(0.5*roll);
-//		q(3) = sin(0.5*yaw)*cos(0.5*pitch)*cos(0.5*roll) - cos(0.5*yaw)*sin(0.5*pitch)*sin(0.5*roll);
-//
-//		return q;
-//	}
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: angle2quatZYX
+	*	  Created by: rsinoue
+	*  Last Modified: Checked on Feb 16th 2018  by jrsbenevides and dalsochio
+	*
+	*  	 Description: 1. Converts Euler angles into quaternions
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
 
 	void Conversion::angle2quatZYX(VectorQuat& q, const double& yaw, const double& pitch, const double& roll){
 		// q = [w, x, y, z]'
-		// Avaliar depois se vale a pena otimizar...
-		//Verificado em 16/02/18
+		
 		q(0) = cos(0.5*yaw)*cos(0.5*pitch)*cos(0.5*roll) + sin(0.5*yaw)*sin(0.5*pitch)*sin(0.5*roll);
 		q(1) = cos(0.5*yaw)*cos(0.5*pitch)*sin(0.5*roll) - sin(0.5*yaw)*sin(0.5*pitch)*cos(0.5*roll);
 		q(2) = cos(0.5*yaw)*sin(0.5*pitch)*cos(0.5*roll) + sin(0.5*yaw)*cos(0.5*pitch)*sin(0.5*roll);
 		q(3) = sin(0.5*yaw)*cos(0.5*pitch)*cos(0.5*roll) - cos(0.5*yaw)*sin(0.5*pitch)*sin(0.5*roll);	
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: quat2angleZYX
+	*	  Created by: rsinoue
+	*  Last Modified: Checked on Feb 16th 2018 by jrsbenevides and dalsochio
+	*
+	*  	 Description: 1. Converts quaternions into Euler angles
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
+
 	void Conversion::quat2angleZYX(Vector3axes& Angles,const VectorQuat& q){
 
-		// Angles(0) = atan2( 2*(q(2)*q(3) + q(0)*q(1)) , (q(0)*q(0) - q(1)*q(1) - q(2)*q(2) + q(3)*q(3)) ); // Roll angle - axis X
-		// Angles(1) = asin( -2*(q(1)*q(3) -q(0)*q(2)) );                                                    // Pitch angle - axis Y
-		// Angles(2) = atan2( 2*(q(1)*q(2) + q(0)*q(3)) , q(0)*q(0) + q(1)*q(1) - q(2)*q(2) - q(3)*q(3) );   // Yaw angle - axis Z
-
-		//Verificado em 16/02/18 - Joao e Marlon
-		Angles(0) = atan2( 2*(q(2)*q(3) + q(0)*q(1)) , 1 - 2*(q(1)*q(1) + q(2)*q(2)) ); 	// Roll angle - axis X
+		Angles(0) = atan2( 2*(q(2)*q(3) + q(0)*q(1)) , 1 - 2*(q(1)*q(1) + q(2)*q(2)) ); 	// Roll angle  - axis X
 		Angles(1) = asin(  2*(q(0)*q(2) - q(1)*q(3)) );                                   	// Pitch angle - axis Y
-		Angles(2) = atan2( 2*(q(1)*q(2) + q(0)*q(3)) , 1 - 2*(q(2)*q(2) + q(3)*q(3)) );   	// Yaw angle - axis Z
-
+		Angles(2) = atan2( 2*(q(1)*q(2) + q(0)*q(3)) , 1 - 2*(q(2)*q(2) + q(3)*q(3)) );   	// Yaw angle   - axis Z
 	}
 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: quat2dcmZYX
+	*	  Created by: rsinoue
+	*  Last Modified: 
+	*
+	*  	 Description: 1. Mounts Rotation matrix based on quaternions
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
 
 	void Conversion::quat2dcmZYX(Matrix3d& R, const VectorQuat& q) {
 
@@ -54,6 +62,14 @@ namespace DRONE {
 
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: quatmultiply
+	*	  Created by: rsinoue
+	*  Last Modified: 
+	*
+	*  	 Description: 1. Quaternion product
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
 
 	void Conversion::quatmultiply(VectorQuat& s, const VectorQuat& p, const VectorQuat& q){
 
@@ -67,20 +83,36 @@ namespace DRONE {
 		s = P*q;
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: quatconj
+	*	  Created by: rsinoue
+	*  Last Modified: 
+	*
+	*  	 Description: 1. 
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
+
 	void Conversion::quatconj(VectorQuat& s, const VectorQuat& q){
 
 		s << q(0),-q(1),-q(2), -q(3);
 
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: c2d
+	*	  Created by: jrsbenevides
+	*  Last Modified: 
+	*
+	*  	 Description: 1. Computes Ad through Taylor Series' expansion of e^(AT) and Bd when A in non singular
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
 
 	void Conversion::c2d(Matrix8d& Adisc,Matrix8x4& Bdisc,const Matrix8d& Acont,const Matrix8x4& Bcont, double tS){
 
-		/*Computes Ad through Taylor Series' expansion of e^(AT) and Bd when A in non singular*/
-
-		Adisc = MatrixXd::Identity(8,8);
-		Matrix8d Bdaux = MatrixXd::Identity(8,8);
-		Matrix8d aux = MatrixXd::Identity(8,8);
+		Adisc 			= MatrixXd::Identity(8,8);
+		Matrix8d Bdaux 	= MatrixXd::Identity(8,8);
+		Matrix8d aux 	= MatrixXd::Identity(8,8);
+		
 		double inv;
 
 		for(int i=1;i<=30;i++)
@@ -93,6 +125,15 @@ namespace DRONE {
 
 		Bdisc =  Bdaux*Bcont*tS;
 	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: geodetic2ecef
+	*	  Created by: rsinoue
+	*  Last Modified: 
+	*
+	*  	 Description: 1. 
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////		
 
 	void Conversion::geodetic2ecef(Vector3d& pe, const Vector3d& llh){
 
@@ -113,6 +154,15 @@ namespace DRONE {
 		pe(2) = (RN*(1-e2)+h)*sin(lat);        // z
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: ecef2ned
+	*	  Created by: rsinoue
+	*  Last Modified: 
+	*
+	*  	 Description: 1. 
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
+
 	void Conversion::ecef2ned(Vector3d& pt, const Vector3d& pe, const Vector3d& llh0){
 		double lat0 = llh0(0);
 		double lon0 = llh0(1);
@@ -130,8 +180,4 @@ namespace DRONE {
 		pt = RTE*(pe - pe0);
 	}
 
-
 } // namespace DRONE
-
-
-
