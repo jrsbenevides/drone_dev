@@ -235,7 +235,20 @@ namespace DRONE {
 
 				mGoal.twist.twist.angular.x    = 0.0;
 				mGoal.twist.twist.angular.y    = 0.0;
-				mGoal.twist.twist.angular.z    = 0.0;					
+				mGoal.twist.twist.angular.z    = 0.0;
+
+				// yaw_desired = angles::normalize_angle(wAng*t);
+				
+				// angle2quatZYX(quatDesired, yaw_desired, 0.0 , 0.0);
+
+				// mGoal.pose.pose.orientation.w = quatDesired(0);
+				// mGoal.pose.pose.orientation.x = quatDesired(1);
+				// mGoal.pose.pose.orientation.y = quatDesired(2);
+				// mGoal.pose.pose.orientation.z = quatDesired(3);
+
+				// mGoal.twist.twist.angular.x    = 0.0;
+				// mGoal.twist.twist.angular.y    = 0.0;
+				// mGoal.twist.twist.angular.z    = wAng;					
 			
 			}
 			else if(trajectory.compare("ident") == 0){

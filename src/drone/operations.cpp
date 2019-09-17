@@ -38,7 +38,7 @@ namespace DRONE {
 		// Angles(1) = asin( -2*(q(1)*q(3) -q(0)*q(2)) );                                                    // Pitch angle - axis Y
 		// Angles(2) = atan2( 2*(q(1)*q(2) + q(0)*q(3)) , q(0)*q(0) + q(1)*q(1) - q(2)*q(2) - q(3)*q(3) );   // Yaw angle - axis Z
 
-		//Verified on Feb/06/2018 - Joao and Marlon
+		//Verificado em 16/02/18 - Joao e Marlon
 		Angles(0) = atan2( 2*(q(2)*q(3) + q(0)*q(1)) , 1 - 2*(q(1)*q(1) + q(2)*q(2)) ); 	// Roll angle - axis X
 		Angles(1) = asin(  2*(q(0)*q(2) - q(1)*q(3)) );                                   	// Pitch angle - axis Y
 		Angles(2) = atan2( 2*(q(1)*q(2) + q(0)*q(3)) , 1 - 2*(q(2)*q(2) + q(3)*q(3)) );   	// Yaw angle - axis Z

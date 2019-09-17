@@ -126,8 +126,8 @@ Kd: [-1.50, -1.50, -2.00, 0]
 # "wayPoint"        = set point without acc and vel desired
 # "ident"           = Identification Flight = circleXY (30s) + sinus Z(30s) + sinus Yaw (remaining time)
 
-trajectory: "circleXY"
-velMed: 0.2
+trajectory: "straightLine"
+velMed: 0.25
 amplitude: 0.5
 
 # In case we select "straightLine", we set poseDesired as: [Xd[m], Yd[m], Zd[m], Yawd[rad], Time[s]]
