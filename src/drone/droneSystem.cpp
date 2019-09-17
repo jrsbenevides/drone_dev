@@ -438,9 +438,8 @@ namespace DRONE {
 
 		}
 
-		 cout << "inputCL = [" << input.transpose() << "]" << endl;
-
-		 // Build message
+		drone.inputSaturation(input);
+		
 	     cmd_vel_msg.linear.x  = input(0);
 	     cmd_vel_msg.linear.y  = input(1);
 	     cmd_vel_msg.linear.z  = input(2);

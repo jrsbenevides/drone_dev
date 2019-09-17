@@ -736,7 +736,8 @@ namespace DRONE {
 	*	  Created by: jrsbenevides
 	*  Last Modified:
 	*
-	*  	 Description: 1. Receive as arguments the current position vector, the past position vector and its times;
+	*  	 Description: Estimate linear velocity by simple differentiation (No use while using the Kalman Filter)
+	*  	 	   Steps: 1. Receive as arguments the current position vector, the past position vector and its times;
 	* 				  2. Compute the 'delta' position and the 'delta' time;
 	*				  3. Compute the 'inverse of 'delta' time;	
 	* 				  4. Compute the discrete derivative of position, called 'linearVelVicon' and return it;		  
@@ -751,9 +752,6 @@ namespace DRONE {
 		positionDiff	= posCurrent - posPast;
 		timeDiff 		= timeNow - timePast;
 
-		// cout << "time Difference:" << timeDiff << endl;
-		// cout << "position Difference:" << positionDiff << endl;
-
 		invTimeDiff = 1/timeDiff;
 
 		linearVelVicon 	<<  invTimeDiff*positionDiff;
@@ -765,8 +763,8 @@ namespace DRONE {
 	/* 		Function: get Angular Vel Vicon
 	*	  Created by: jrsbenevides
 	*  Last Modified:
-	*
-	*  	 Description: 1. Receive as arguments the current quaternion vector, the past quaternion vector and its times;
+	*  	 Description: Estimate angular velocity by simple differentiation (No use while using the Kalman Filter)
+	*  	 	   Steps: 1. Receive as arguments the current quaternion vector, the past quaternion vector and its times;
 	*                 2. Convert the 4x1 quaternions vectors to 3x1 euler angles vector;
 	* 				  3. Compute the 'delta' time;	
 	* 				  4. Compute the discrete angular velocity (by subtraction of current and past angle vectors), called 'angularVelVicon' and return it;		  
@@ -794,12 +792,468 @@ namespace DRONE {
 		return angularVelVicon;
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: get Hinf Control Law
+	*	  Created by: jrsbenevides
+	*  Last Modified:
+	*
+	*  	 Description: Computes the H-Infinite Control Law (For future versions only)
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	Vector4d Drone::getHinfControlLaw (void) {
+
+		Vector4d xError, xIntError;
+		Vector4d dx;
+		Vector4d dxError;
+		Vector4d d2xDesired;
+
+		double deltaTAtual;
+
+		xError.head(3) = positionError;
+		xError(3) = yawError;
+
+		dx.head(3) = dPosition;
+		dx(3) = dYaw;
+
+		dxError.head(3) = dPositionError;
+		dxError(3) = dYawError;
+
+		d2xDesired.head(3) = d2PositionDesired;
+		d2xDesired(3) = d2YawDesired;
+
+		u = d2xDesired  + Kp*xError + Kd*dxError;
+
+		input = F1.inverse()*(u + F2*dx);
+		
+
+		// NEXT COMMENTS: WAITING FOR APPROVAL => DELETE IF WORKS
+
+		// for(int i=0; i < 4;i++){
+
+		// 	if(abs(xError(i)) < threshold(i)){
+		// 		input(i) = 0.0;
+		// 	}
+
+		// 	if(abs(input(i)) > inputRange(i)){
+		// 		if(input(i) > 0){
+		// 			input(i) = inputRange(i);
+		// 		} else {
+		// 			input(i) = -inputRange(i);
+		// 		}
+		// 	}
+		// }
+
+		return input;
+	}	
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: get FL Control Law
+	*	  Created by: jrsbenevides
+	*  Last Modified:
+	*
+	*  	 Description: 1. Define local variables and print the current position error, position desired and current postion;	
+	* 	  			  2. Stores position and yaw orientation errors in state vectors;
+	*				  3. Stores derivatives of position error and orientation error in state vectors;
+	* 				  4. Stores second derivatives of desired position and orientation in state vectors;
+	*                 5. Computes the FL control law;
+	*                 6. Stabilishes a condition, with 'threshold', that defines a tolerance for position error;
+	*                 7. Stabilishes a condition that defines a upper and lower limit for saturation each input;
+	*                 8. Returns a 4x1 input vector;
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	Vector4d Drone::getFLControlLaw (void) {
+
+		Vector4d xError, xIntError;
+		Vector4d dx;
+		Vector4d dxError;
+		Vector4d d2xDesired;
+
+		double deltaTAtual;
+
+		xError.head(3) = positionError;
+		xError(3) = yawError;
+
+		dx.head(3) = dPosition;
+		dx(3) = dYaw;
+
+		dxError.head(3) = dPositionError;
+		dxError(3) = dYawError;
+
+		d2xDesired.head(3) = d2PositionDesired;
+		d2xDesired(3) = d2YawDesired;
+
+		u = d2xDesired  + Kp*xError + Kd*dxError;
+
+		input = F1.inverse()*(u + F2*Rotation.transpose()*dx);
+		
+		// for(int i=0; i < 4;i++){
+		// 	if(abs(xError(i)) < threshold(i)){
+		// 		input(i) = 0.0;
+		// 	}
+		// 	if(abs(input(i)) > inputRange(i)){
+		// 		if(input(i) > 0){
+		// 			input(i) = inputRange(i);
+		// 		} else {
+		// 			input(i) = -inputRange(i);
+		// 		}
+		// 	}
+		// }
+
+		return input;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: get PID Control Law
+	*	  Created by: jrsbenevides
+	*  Last Modified:
+	*
+	*  	 Description: 1. Defines local variables and prints current position error, position desired and current postion;	
+	* 	  			  2. Stores position and yaw orientation errors in state vectors;
+	*				  3. Stores derivatives of position error and orientation error in state vectors;
+	*                 4. Gets the current 'delta' time and computes the discrete integral of the position error (rectangle method) and stores it in "xIntError";
+	*                 5. Prints the current position error, derivative position error and integral position error;
+	*				  6. Computes the PID control law and prints its value;
+	*                 7. Stabilishes a condition, with 'threshold', that defines a tolerance for position error;
+	*                 8. Saturates each element of the input vector based on limits of the real actuator;
+	*                 9. Returns a saturated 4x1 input vector;
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	Vector4d Drone::getPIDControlLaw (void) {
+
+		Vector4d xError, xIntError;
+		Vector4d dx;
+		Vector4d dxError;
+
+		double deltaTAtual;
+
+		xError.head(3) = positionError;
+		xError(3) = yawError;
+
+		dx.head(3) = dPosition;
+		dx(3) = dYaw;
+
+		dxError.head(3) = dPositionError;
+		dxError(3) = dYawError;
+
+		deltaTAtual	  = getDeltaTimeNow();
+		xIntError = getXIntError();
+		xIntError = xIntError + xError*deltaTAtual;
+		
+		setXIntError(xIntError);
+
+		u = Kp*xError + Kd*dxError + Ki*xIntError;
+
+
+		// for(int i=0; i < 4;i++){
+
+		// 	if(abs(xError(i)) < threshold(i)){
+		// 		input(i) = 0.0;
+		// 	}
+		// 	else {
+		// 		input(i) = u(i);
+		// 	}
+
+		// 	if(abs(input(i)) > inputRange(i)){
+		// 		if(input(i) > 0){
+		// 			input(i) = inputRange(i);
+		// 		} else {
+		// 			input(i) = -inputRange(i);
+		// 		}
+		// 	}
+		// }
+
+		return input;
+	}
+
+
+	 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: get Recursive LQR Control Law
+	*	  Created by: jrsbenevides
+	*  Last Modified: jrsbenevides - dxDesired instead of dx on input.
+	*
+	*  	 Description: 1. Stores current position and orientation (yaw) error, derivative position and orientation, second derivative position and orientation desireds;
+	*				  2. Stores "xError" and "dxError" in "x";
+	* 				  3. Initiates and Defines the covariance state nois matrix and the covariance noise observer matrix;
+	*                 4. Initiates the "L" matrix from RLQR;
+	*				  5. Initiates the RLQR gain;
+	* 				  6. Defines the augmentad state space and stores in "Acont" and "Bcont";
+	*				  7. Prints "Acont" and "Bcont";
+	*				  8. Converts the continuous model ("Acont" and "Bcont") to a discrete model ans stores in "Adisc" and "Bdisc";
+	*				  9. Prints "Adisc" and "Bdisc";
+	*				  10. Calls the RLQR() function with the parameters obtained as arguments and updates "L", "Krlqr" and "P";
+	*				  11. Computes the RLQR control law and prints it;
+	*				  12. Computes the 4x1 input vector based on the formulation obtained from state space error method;
+	*				  13. Prints the input vector;
+	*                 14. Stabilishes a condition, with 'threshold', that defines a tolerance for position error;
+	*                 15. Saturates each element of the input vector based on limits of the real actuator;
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	Vector4d Drone::getRecursiveLQRControlLaw (void) {
+
+			Vector4d xError,dxError,dx, dxDesired, d2xDesired;
+			Vector8d x;
+
+			xError.head(3) = positionError;
+			xError(3) = yawError;
+
+			dx.head(3) = dPosition;
+			dx(3) = dYaw;
+
+			dxError.head(3) = dPositionError;
+			dxError(3) = dYawError;
+
+			dxDesired.head(3) = dPositionDesired;
+			dxDesired(3) 	  = dYawDesired;
+
+			d2xDesired.head(3) = d2PositionDesired;
+			d2xDesired(3) = d2YawDesired;
+
+			x << dxError, xError;
+
+			Matrix4d Rr;
+			Matrix8d Acont,Adisc,Qr,L;
+			Matrix8x4 Bcont,Bdisc;
+
+
+			Rr << 1.0, 0.0, 0.0, 0.0,
+				  0.0, 1.0, 0.0, 0.0,
+				  0.0, 0.0, 1.0, 0.0,
+				  0.0, 0.0, 0.0, 1.0;
+
+			Rr = 0.15*Rr;
+
+			Qr << 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,  0.0, 0.0,
+				  0.0, 1.0, 0.0, 0.0, 0.0, 0.0,  0.0, 0.0,
+				  0.0, 0.0, 1.0, 0.0, 0.0, 0.0,  0.0, 0.0,
+				  0.0, 0.0, 0.0, 1.0, 0.0, 0.0,  0.0, 0.0,
+				  0.0, 0.0, 0.0, 0.0, 1.0, 0.0,  0.0, 0.0,
+				  0.0, 0.0, 0.0, 0.0, 0.0, 1.0,  0.0, 0.0,
+				  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 10.0, 0.0,
+				  0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  0.0, 5.0;
+
+			Qr = 1e-1*Qr;
+
+			Klqr = Klqr.Zero();
+
+			Acont << -F2*Rotation.transpose(), MatrixXd::Zero(4,4),
+					 MatrixXd::Identity(4,4),  MatrixXd::Zero(4,4);
+
+			Bcont << MatrixXd::Identity(4,4),
+					 MatrixXd::Zero(4,4);
+
+			Conversion::c2d(Adisc,Bdisc,Acont,Bcont,0.02);
+
+			RecursiveLQR(Klqr,Adisc,Bdisc,Rr,Qr);
+		
+			u = Klqr*x; 
+			
+			input = F1.inverse()*(u + d2xDesired + F2*Rotation.transpose()*dxDesired);
+
+			// for(int i=0; i < 4;i++){
+
+			// 	if(abs(xError(i)) < threshold(i)){
+			// 		input(i) = 0.0;
+			// 	}
+
+			// 	if(abs(input(i)) > inputRange(i)){
+			// 		if(input(i) > 0){
+			// 			input(i) = inputRange(i);
+			// 		} else {
+			// 			input(i) = -inputRange(i);
+			// 		}
+			// 	}
+			// }
+
+			return input;
+		}
+
+	
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: get Robust Control Law
+	*	  Created by: jrsbenevides
+	*  Last Modified: jrsbenevides - dxDesired instead of dx on input.
+	*
+	*  	 Description: 1. Stores current position and orientation (yaw) error, derivative position and orientation, second derivative position and orientation desireds;
+	*				  2. Stores "xError" and "dxError" in "x";
+	* 				  3. Initiates and Defines the covariance state nois matrix and the covariance noise observer matrix;
+	*                 4. Initiates the "L" matrix from RLQR;
+	*				  5. Initiates the RLQR gain;
+	* 				  6. Defines the augmentad state space and stores in "Acont" and "Bcont";
+	*				  7. Prints "Acont" and "Bcont";
+	*				  8. Converts the continuous model ("Acont" and "Bcont") to a discrete model ans stores in "Adisc" and "Bdisc";
+	*				  9. Prints "Adisc" and "Bdisc";
+	*				  10. Calls the RLQR() function with the parameters obtained as arguments and updates "L", "Krlqr" and "P";
+	*				  11. Computes the RLQR control law and prints it;
+	*				  12. Computes the 4x1 input vector based on the formulation obtained from state space error method;
+	*				  13. Prints the input vector;
+	*                 14. Stabilishes a condition, with 'threshold', that defines a tolerance for position error;
+	*                 15. Saturates each element of the input vector based on limits of the real actuator;
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	Vector4d Drone::getRobustControlLaw (void) {
+
+			Vector4d xError,dxError,dx, dxDesired, d2xDesired,u;
+			Vector8d x;
+
+			xError.head(3) = positionError;
+			xError(3) = yawError;
+
+			dx.head(3) = dPosition;
+			dx(3) = dYaw;
+
+			dxError.head(3) = dPositionError;
+			dxError(3) = dYawError;
+
+			dxDesired.head(3) = dPositionDesired;
+			dxDesired(3) 	  = dYawDesired;
+
+			d2xDesired.head(3) = d2PositionDesired;
+			d2xDesired(3) = d2YawDesired;
+
+			x << dxError, xError;
+
+			Matrix4d Rr;
+			Matrix8d Acont,Adisc,Qr,L;
+			Matrix8x4 Bcont,Bdisc;
+			Matrix4x8 Krlqr;
+
+			Rr = Rr.Identity();
+			Rr = 0.15*Rr;
+			
+			
+			Qr = Qr.Identity();
+			Qr.block<2,2>(6,6) << 10.0, 0,
+								   0, 5.0;
+			Qr = 0.1*Qr;
+
+			L = L.Zero();
+			Krlqr = Krlqr.Zero();
+
+			Acont << -F2*Rotation.transpose(), MatrixXd::Zero(4,4),
+					 MatrixXd::Identity(4,4),  MatrixXd::Zero(4,4);
+
+			Bcont << MatrixXd::Identity(4,4),
+					 MatrixXd::Zero(4,4);
+
+			Conversion::c2d(Adisc,Bdisc,Acont,Bcont,0.01);
+
+			RLQR(L,Krlqr,Adisc,Bdisc,Rr,Qr);
+
+			u = Krlqr*x;
+
+			input = (u + d2xDesired + F2*Rotation.transpose()*dxDesired);
+
+			input = F1.inverse()*input;
+
+			// for(int i=0; i < 4;i++){
+
+			// 	if(abs(xError(i)) < threshold(i)){
+			// 		input(i) = 0.0;
+			// 	}
+
+			// 	if(abs(input(i)) > inputRange(i)){
+			// 		if(input(i) > 0){
+			// 			input(i) = inputRange(i);
+			// 		} else {
+			// 			input(i) = -inputRange(i);
+			// 		}
+			// 	}
+			// }			
+			return input;
+		}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/* 		Function: get LQR Control Law
+	*	  Created by: jrsbenevides
+	*  Last Modified:
+	*
+	*  	 Description: 1. Stores current position and orientation (yaw) error, derivative position and orientation, second derivative position and orientation desireds;
+	*				  2. Stores "xError" and "dxError" in "x";
+	* 				  3. Initiates and Defines the covariance state nois matrix and the covariance noise observer matrix;
+	*                 4. Initiates the "L" matrix from RLQR;
+	*				  5. Initiates the RLQR gain;
+	* 				  6. Defines the augmentad state space and stores in "Acont" and "Bcont";
+	*				  7. Prints "Acont" and "Bcont";
+	*				  8. Converts the continuous model ("Acont" and "Bcont") to a discrete model ans stores in "Adisc" and "Bdisc";
+	*				  9. Prints "Adisc" and "Bdisc";
+	*				  10. Calls the RLQR() function with the parameters obtained as arguments and updates "L", "Krlqr" and "P";
+	*				  11. Computes the RLQR control law and prints it;
+	*				  12. Computes the 4x1 input vector based on the formulation obtained from state space error method;
+	*				  13. Prints the input vector;
+	*                 14. Stabilishes a condition, with 'threshold', that defines a tolerance for position error;
+	*                 15. Saturates each element of the input vector based on limits of the real actuator;
+	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	Vector4d Drone::getLQRControlLaw (void) {
+
+			Vector4d xError,dxError,dx, dxDesired, d2xDesired,u;
+			Vector8d x;
+
+			xError.head(3) = positionError;
+			xError(3) = yawError;
+
+			dx.head(3) = dPosition;
+			dx(3) = dYaw;
+
+			dxError.head(3) = dPositionError;
+			dxError(3) = dYawError;
+
+			dxDesired.head(3) = dPositionDesired;
+			dxDesired(3) 	  = dYawDesired;
+
+			d2xDesired.head(3) = d2PositionDesired;
+			d2xDesired(3) = d2YawDesired;
+
+			x << dxError, xError;
+
+			Matrix4d Rr;
+			Matrix8d Acont,Adisc,Qr;
+			Matrix8x4 Bcont,Bdisc;
+			Matrix4x8 Klqr;
+
+			Rr = 0.0001*Rr.Identity();
+			Qr = 0.05*Qr.Identity();
+
+			Klqr <<   19.2462,         0,        0,         0,   18.4566,         0,         0,         0,
+        					0,   19.2653,        0,         0,         0,   18.4532,         0,         0,
+        					0,         0,  16.8239,         0,         0,         0,   18.9011,         0,
+        					0,         0,        0,   17.4210,         0,         0,         0,   18.7914;
+
+			Klqr << 0.1*Klqr;			        					
+
+			u = -Klqr*x;
+
+			input = F1.inverse()*(u + d2xDesired + F2*Rotation.transpose()*dxDesired);
+
+			// for(int i=0; i < 4;i++){
+
+			// 	if(abs(xError(i)) < threshold(i)){
+			// 		input(i) = 0.0;
+			// 	}
+
+			// 	if(abs(input(i)) > inputRange(i)){
+			// 		if(input(i) > 0){
+			// 			input(i) = inputRange(i);
+			// 		} else {
+			// 			input(i) = -inputRange(i);
+			// 		}
+			// 	}
+			// }			
+			return input;
+		}
+
 	/* ###########################################################################################################################*/
 	/* ###########################################################################################################################*/
 	/* #####################################            REGULAR FUNCTIONS                 ########################################*/
 	/* ###########################################################################################################################*/
 	/* ###########################################################################################################################*/
-	
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/* 		Function: initDroneParam
@@ -914,8 +1368,8 @@ namespace DRONE {
 	*	  Created by: jrsbenevides
 	*  Last Modified: March 7th 2018 
 	*
-	*  	 Description: Estimates velocity from Vicon position.
-	*				  1. Updates A matrix based on current sampling time; ##############CHECK IF IT IS NOT BETTER TO FIX THIS NUMBER!!!
+	*  	 Description: Estimates linear velocity from Vicon position - Kalman Filter.
+	*				  1. Updates A matrix based on current sampling time;
 	* 				  2. Reads variable and error covariance estimate from previous time instant;
 	*				  3. Performs simple Kalman Filter;	
 	* 				  4. Stores variable and error covariance estimate from this time instant;		  
@@ -958,7 +1412,7 @@ namespace DRONE {
 		setKalmanP(P);
 		setKalmanX(x);
 
-		estLinearVel 	<<  x.segment<3>(3); //mudar vector.segment<n>(i); n elements starting at position i
+		estLinearVel 	<<  x.segment<3>(3); //vector.segment<n>(i) =  n elements starting at position i
 		
 		return estLinearVel;
 	}
@@ -968,10 +1422,12 @@ namespace DRONE {
 	*	  Created by: jrsbenevides
 	*  Last Modified:
 	*
-	*  	 Description: 1. Receive as arguments the current quaternion vector, the past quaternion vector and its times;
-	*                 2. Convert the 4x1 quaternions vectors to 3x1 euler angles vector;
-	* 				  3. Compute the 'delta' time;	
-	* 				  4. Compute the discrete angular velocity (by subtraction of current and past angle vectors), called 'angularVelVicon' and return it;		  
+	*  	 Description: Estimates angular velocity from Vicon position - Kalman Filter.
+	*				  1. Updates A matrix based on current sampling time;
+	* 				  2. Reads variable and error covariance estimate from previous time instant;
+	*				  3. Performs simple Kalman Filter;	
+	* 				  4. Stores variable and error covariance estimate from this time instant;		  
+	* 				  5. Returns estimated velocity.
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1018,61 +1474,17 @@ namespace DRONE {
 	}	
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/* 		Function: get Hinf Control Law
+	/* 		Function: inputSaturation
 	*	  Created by: jrsbenevides
 	*  Last Modified:
 	*
-	*  	 Description: 1. Define local variables and print the current position error, position desired and current postion;	
-	* 	  			  2. Stores position and yaw orientation errors in state vectors;
-	*				  3. Stores derivatives of position error and orientation error in state vectors;
-	* 				  4. Stores second derivatives of desired position and orientation in state vectors;
-	*                 5. Computes the FL control law;
-	*                 6. Stabilishes a condition, with 'threshold', that defines a tolerance for position error;
-	*                 7. Stabilishes a condition that defines a upper and lower limit for saturation each input;
-	*                 8. Returns a 4x1 input vector;
+	*  	 Description: Defines a limitation for input signal (usually [-1,1])
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	Vector4d Drone::getHinfControlLaw (void) {
+	void Drone::inputSaturation(Vector4d& input){
 
-		/// This section will define the Feedback Linearization signal controller and other parameters ////
-
-		Vector4d xError, xIntError;
-		Vector4d dx;
-		Vector4d dxError;
-		Vector4d d2xDesired;
-
-		double deltaTAtual;
-
-		cout << "\nPosition Error:" 	<< positionError << endl;
-		cout << "\nPosition Desired:"   << positionDesired << endl;
-		cout << "\nCurrent Position :"  << position << endl;
-
-		// Compute the position error and its derivatives
-
-		xError.head(3) = positionError;
-		xError(3) = yawError;
-
-		dx.head(3) = dPosition;
-		dx(3) = dYaw;
-
-		dxError.head(3) = dPositionError;
-		dxError(3) = dYawError;
-
-		d2xDesired.head(3) = d2PositionDesired;
-		d2xDesired(3) = d2YawDesired;
-
-		// Compute the F. L. control law ///////////////////////
-
-		u = d2xDesired  + Kp*xError + Kd*dxError;
-
-		input = F1.inverse()*(u + F2*dx);
-		
 		for(int i=0; i < 4;i++){
-
-			if(abs(xError(i)) < threshold(i)){
-				input(i) = 0.0;
-			}
 
 			if(abs(input(i)) > inputRange(i)){
 				if(input(i) > 0){
@@ -1082,524 +1494,9 @@ namespace DRONE {
 				}
 			}
 		}
-//		cout << "inputSat = [" << inputSat.transpose() << "]" << endl;
-
-		return input;
-	}	
+	}		
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/* 		Function: get FL Control Law
-	*	  Created by: jrsbenevides
-	*  Last Modified:
-	*
-	*  	 Description: 1. Define local variables and print the current position error, position desired and current postion;	
-	* 	  			  2. Stores position and yaw orientation errors in state vectors;
-	*				  3. Stores derivatives of position error and orientation error in state vectors;
-	* 				  4. Stores second derivatives of desired position and orientation in state vectors;
-	*                 5. Computes the FL control law;
-	*                 6. Stabilishes a condition, with 'threshold', that defines a tolerance for position error;
-	*                 7. Stabilishes a condition that defines a upper and lower limit for saturation each input;
-	*                 8. Returns a 4x1 input vector;
-	*/
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	Vector4d Drone::getFLControlLaw (void) {
-
-		/// This section will define the Feedback Linearization signal controller and other parameters ////
-
-		Vector4d xError, xIntError;
-		Vector4d dx;
-		Vector4d dxError;
-		Vector4d d2xDesired;
-
-		double deltaTAtual;
-
-		cout << "\nPosition Error:" 	<< positionError << endl;
-		cout << "\nPosition Desired:"   << positionDesired << endl;
-		cout << "\nCurrent Position :"  << position << endl;
-
-		// Compute the position error and its derivatives
-
-		xError.head(3) = positionError;
-		xError(3) = yawError;
-
-		dx.head(3) = dPosition;
-		dx(3) = dYaw;
-
-		dxError.head(3) = dPositionError;
-		dxError(3) = dYawError;
-
-		d2xDesired.head(3) = d2PositionDesired;
-		d2xDesired(3) = d2YawDesired;
-
-		// Compute the F. L. control law ///////////////////////
-
-		u = d2xDesired  + Kp*xError + Kd*dxError;
-
-		// input = F1.inverse()*(u + F2*Rotation.transpose()*dx);
-		input << 0,0,0, positionDesired(1);
-		
-		// for(int i=0; i < 4;i++){
-
-		// 	if(abs(xError(i)) < threshold(i)){
-		// 		input(i) = 0.0;
-		// 	}
-
-		// 	if(abs(input(i)) > inputRange(i)){
-		// 		if(input(i) > 0){
-		// 			input(i) = inputRange(i);
-		// 		} else {
-		// 			input(i) = -inputRange(i);
-		// 		}
-		// 	}
-		// }
-//		cout << "inputSat = [" << inputSat.transpose() << "]" << endl;
-
-		return input;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/* 		Function: get PID Control Law
-	*	  Created by: jrsbenevides
-	*  Last Modified:
-	*
-	*  	 Description: 1. Defines local variables and prints current position error, position desired and current postion;	
-	* 	  			  2. Stores position and yaw orientation errors in state vectors;
-	*				  3. Stores derivatives of position error and orientation error in state vectors;
-	*                 4. Gets the current 'delta' time and computes the discrete integral of the position error (rectangle method) and stores it in "xIntError";
-	*                 5. Prints the current position error, derivative position error and integral position error;
-	*				  6. Computes the PID control law and prints its value;
-	*                 7. Stabilishes a condition, with 'threshold', that defines a tolerance for position error;
-	*                 8. Saturates each element of the input vector based on limits of the real actuator;
-	*                 9. Returns a saturated 4x1 input vector;
-	*/
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	Vector4d Drone::getPIDControlLaw (void) {
-
-		/// This section will define the Feedback Linearization signal controller and other parameters ////
-
-		Vector4d xError, xIntError;
-		Vector4d dx;
-		Vector4d dxError;
-
-		double deltaTAtual;
-
-		// cout << "\nPosition Error:" 	<< positionError << endl;
-		// cout << "\nPosition Desired:"   << positionDesired << endl;
-		// cout << "\nCurrent Position :"  << position << endl;
-
-		// Compute the position error and its derivatives
-
-		xError.head(3) = positionError;
-		xError(3) = yawError;
-
-		dx.head(3) = dPosition;
-		dx(3) = dYaw;
-
-		dxError.head(3) = dPositionError;
-		dxError(3) = dYawError;
-
-		// Integrate the position error ////////////////////////
-
-		deltaTAtual	  = getDeltaTimeNow();
-		xIntError = getXIntError();
-		xIntError = xIntError + xError*deltaTAtual;
-		
-		setXIntError(xIntError);
-
-		// Compute the PID control law ///////////////////////
-
-		// cout << "xError: " 	<< xError.transpose() << endl;
-		// cout << "dxError: " << dxError.transpose() << endl;
-		// cout << "xIntError: " 	<< xIntError.transpose() << endl;
-
-		// u = d2xDesired  + Kp*xError + Kd*dxError;
-		u = Kp*xError + Kd*dxError + Ki*xIntError;
-
-		// cout << "input u: " << u.transpose() << endl;
-
-		// Define a threshold /////////////////////
-
-		// if (xError.norm() < threshold) {
-		// 	input = input.Zero();
-		// }
-		// else
-		// {
-		// 	input = u;
-		// }
-
-		// Saturate the controw law ///////////////////////
-
-		//if ( abs(input(0)) > inputRange | abs(input(1)) > inputRange | abs(input(2)) > inputRange | abs(input(3)) > inputRange) {
-		// if ((abs(input(0)) > inputRange) || (abs(input(1)) > inputRange) || (abs(input(2)) > inputRange) || (abs(input(3)) > inputRange)) {
-		// 	inputSat = inputRange*input/input.norm();
-		// }
-		// else {
-		// 	inputSat = input;
-		// 	// inputSat = inputRange*input; //Estava assim em 05/02/18
-		// }
-
-		for(int i=0; i < 4;i++){
-
-			if(abs(xError(i)) < threshold(i)){
-				input(i) = 0.0;
-			}
-			else {
-				input(i) = u(i);
-			}
-
-			if(abs(input(i)) > inputRange(i)){
-				if(input(i) > 0){
-					input(i) = inputRange(i);
-				} else {
-					input(i) = -inputRange(i);
-				}
-			}
-		}
-
-//		cout << "inputSat = [" << inputSat.transpose() << "]" << endl;
-
-		return input;
-	}
-
-
-	 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/* 		Function: get Recursive LQR Control Law
-	*	  Created by: jrsbenevides
-	*  Last Modified: jrsbenevides - dxDesired instead of dx on input.
-	*
-	*  	 Description: 1. Stores current position and orientation (yaw) error, derivative position and orientation, second derivative position and orientation desireds;
-	*				  2. Stores "xError" and "dxError" in "x";
-	* 				  3. Initiates and Defines the covariance state nois matrix and the covariance noise observer matrix;
-	*                 4. Initiates the "L" matrix from RLQR;
-	*				  5. Initiates the RLQR gain;
-	* 				  6. Defines the augmentad state space and stores in "Acont" and "Bcont";
-	*				  7. Prints "Acont" and "Bcont";
-	*				  8. Converts the continuous model ("Acont" and "Bcont") to a discrete model ans stores in "Adisc" and "Bdisc";
-	*				  9. Prints "Adisc" and "Bdisc";
-	*				  10. Calls the RLQR() function with the parameters obtained as arguments and updates "L", "Krlqr" and "P";
-	*				  11. Computes the RLQR control law and prints it;
-	*				  12. Computes the 4x1 input vector based on the formulation obtained from state space error method;
-	*				  13. Prints the input vector;
-	*                 14. Stabilishes a condition, with 'threshold', that defines a tolerance for position error;
-	*                 15. Saturates each element of the input vector based on limits of the real actuator;
-	*/
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	Vector4d Drone::getRecursiveLQRControlLaw (void) {
-
-			Vector4d xError,dxError,dx, dxDesired, d2xDesired;
-			Vector8d x;
-
-			xError.head(3) = positionError;
-			xError(3) = yawError;
-
-			dx.head(3) = dPosition;
-			dx(3) = dYaw;
-
-			dxError.head(3) = dPositionError;
-			dxError(3) = dYawError;
-
-			dxDesired.head(3) = dPositionDesired;
-			dxDesired(3) 	  = dYawDesired;
-
-			d2xDesired.head(3) = d2PositionDesired;
-			d2xDesired(3) = d2YawDesired;
-
-			x << dxError, xError;
-
-			Matrix4d Rr;
-			Matrix8d Acont,Adisc,Qr,L;
-			Matrix8x4 Bcont,Bdisc;
-
-
-			Rr << 1.0, 0.0, 0.0, 0.0,
-				  0.0, 1.0, 0.0, 0.0,
-				  0.0, 0.0, 1.0, 0.0,
-				  0.0, 0.0, 0.0, 1.0;
-
-			//Rr = 0.035*Rr;
-			Rr = 0.15*Rr;
-
-			Qr << 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,  0.0, 0.0,
-				  0.0, 1.0, 0.0, 0.0, 0.0, 0.0,  0.0, 0.0,
-				  0.0, 0.0, 1.0, 0.0, 0.0, 0.0,  0.0, 0.0,
-				  0.0, 0.0, 0.0, 1.0, 0.0, 0.0,  0.0, 0.0,
-				  0.0, 0.0, 0.0, 0.0, 1.0, 0.0,  0.0, 0.0,
-				  0.0, 0.0, 0.0, 0.0, 0.0, 1.0,  0.0, 0.0,
-				  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 10.0, 0.0,
-				  0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  0.0, 5.0;
-
-			//Qr = 1e-2*Qr;
-			Qr = 1e-1*Qr;
-
-
-			Klqr = Klqr.Zero();
-
-			// Assume that the frame is global.
-
-			Acont << -F2*Rotation.transpose(), MatrixXd::Zero(4,4),
-					 MatrixXd::Identity(4,4),  MatrixXd::Zero(4,4);
-
-			Bcont << MatrixXd::Identity(4,4),
-					 MatrixXd::Zero(4,4);
-
-			// cout << "Matrices A and B are mounted as:\n" << Acont << "\n " << Bcont << endl;
-
-			Conversion::c2d(Adisc,Bdisc,Acont,Bcont,0.02);
-
-			// cout << "Matrices Ad and Bd are:\n" << Adisc << "\n " << Bdisc << endl;
-
-			RecursiveLQR(Klqr,Adisc,Bdisc,Rr,Qr);
-		
-			u = Klqr*x; // Computa u que deverá ser aplicado na primeira iteração
-			cout << "K RecursiveLQR = \n" << Klqr << "\n" << endl;
-
-			input = F1.inverse()*(u + d2xDesired + F2*Rotation.transpose()*dxDesired);
-
-
-			for(int i=0; i < 4;i++){
-
-				if(abs(xError(i)) < threshold(i)){
-					input(i) = 0.0;
-				}
-
-				if(abs(input(i)) > inputRange(i)){
-					if(input(i) > 0){
-						input(i) = inputRange(i);
-					} else {
-						input(i) = -inputRange(i);
-					}
-				}
-			}
-
-			return input;
-		}
-
-	
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/* 		Function: get Robust Control Law
-	*	  Created by: jrsbenevides
-	*  Last Modified: jrsbenevides - dxDesired instead of dx on input.
-	*
-	*  	 Description: 1. Stores current position and orientation (yaw) error, derivative position and orientation, second derivative position and orientation desireds;
-	*				  2. Stores "xError" and "dxError" in "x";
-	* 				  3. Initiates and Defines the covariance state nois matrix and the covariance noise observer matrix;
-	*                 4. Initiates the "L" matrix from RLQR;
-	*				  5. Initiates the RLQR gain;
-	* 				  6. Defines the augmentad state space and stores in "Acont" and "Bcont";
-	*				  7. Prints "Acont" and "Bcont";
-	*				  8. Converts the continuous model ("Acont" and "Bcont") to a discrete model ans stores in "Adisc" and "Bdisc";
-	*				  9. Prints "Adisc" and "Bdisc";
-	*				  10. Calls the RLQR() function with the parameters obtained as arguments and updates "L", "Krlqr" and "P";
-	*				  11. Computes the RLQR control law and prints it;
-	*				  12. Computes the 4x1 input vector based on the formulation obtained from state space error method;
-	*				  13. Prints the input vector;
-	*                 14. Stabilishes a condition, with 'threshold', that defines a tolerance for position error;
-	*                 15. Saturates each element of the input vector based on limits of the real actuator;
-	*/
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	Vector4d Drone::getRobustControlLaw (void) {
-
-			Vector4d xError,dxError,dx, dxDesired, d2xDesired,u;
-			Vector8d x;
-
-			xError.head(3) = positionError;
-			xError(3) = yawError;
-
-			dx.head(3) = dPosition;
-			dx(3) = dYaw;
-
-			dxError.head(3) = dPositionError;
-			dxError(3) = dYawError;
-
-			dxDesired.head(3) = dPositionDesired;
-			dxDesired(3) 	  = dYawDesired;
-
-			d2xDesired.head(3) = d2PositionDesired;
-			d2xDesired(3) = d2YawDesired;
-
-			x << dxError, xError;
-
-			Matrix4d Rr;
-			Matrix8d Acont,Adisc,Qr,L;
-			Matrix8x4 Bcont,Bdisc;
-			Matrix4x8 Krlqr;
-
-			Rr = Rr.Identity();
-			//Rr = 1e-4*Rr.Identity();
-			Rr = 0.15*Rr;
-			
-			
-			Qr = Qr.Identity();
-			// Qr = 0.05*Qr;
-			Qr.block<2,2>(6,6) << 10.0, 0,
-								   0, 5.0;
-			Qr = 0.1*Qr;
-
-			L = L.Zero();
-			Krlqr = Krlqr.Zero();
-
-			Acont << -F2*Rotation.transpose(), MatrixXd::Zero(4,4),
-					 MatrixXd::Identity(4,4),  MatrixXd::Zero(4,4);
-
-			Bcont << MatrixXd::Identity(4,4),
-					 MatrixXd::Zero(4,4);
-
-			// cout << "Matrices A and B are mounted as:\n" << Acont << "\n " << Bcont << endl;
-
-			Conversion::c2d(Adisc,Bdisc,Acont,Bcont,0.01);
-
-			cout << "Matrices Ad and Bd are:\n" << Adisc << "\n " << Bdisc << endl;
-
-			RLQR(L,Krlqr,Adisc,Bdisc,Rr,Qr);
-
-			u = Krlqr*x;
-
-			// cout << "Virtual Input u = " << u << endl;
-
-			// input = F1.inverse()*(u + d2xDesired + F2*Rotation.transpose()*dx);
-			input = (u + d2xDesired + F2*Rotation.transpose()*dxDesired);
-
-			// cout << "input aux= " << input.transpose() << endl;
-
-			input = F1.inverse()*input;
-
-			// cout << "Real input = " << input.transpose() << endl;
-
-//			/*Normalização*/
-//			if (xError.norm() < threshold) {
-//				input = input.Zero();
-//			}
-//			else
-//			{
-//				input = F1.inverse()*(u + F2*dx);
-//			}
-//
-//
-//			if ((abs(input(0)) > inputRange) || (abs(input(1)) > inputRange) || (abs(input(2)) > inputRange) || (abs(input(3)) > inputRange)) {
-//				inputSat = inputRange*input/input.norm();
-//			}
-//			else {
-//				inputSat = inputRange*input;
-//			}
-
-			for(int i=0; i < 4;i++){
-
-				if(abs(xError(i)) < threshold(i)){
-					input(i) = 0.0;
-				}
-
-				if(abs(input(i)) > inputRange(i)){
-					if(input(i) > 0){
-						input(i) = inputRange(i);
-					} else {
-						input(i) = -inputRange(i);
-					}
-				}
-			}			
-			return input;
-		}
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/* 		Function: get LQR Control Law
-	*	  Created by: jrsbenevides
-	*  Last Modified:
-	*
-	*  	 Description: 1. Stores current position and orientation (yaw) error, derivative position and orientation, second derivative position and orientation desireds;
-	*				  2. Stores "xError" and "dxError" in "x";
-	* 				  3. Initiates and Defines the covariance state nois matrix and the covariance noise observer matrix;
-	*                 4. Initiates the "L" matrix from RLQR;
-	*				  5. Initiates the RLQR gain;
-	* 				  6. Defines the augmentad state space and stores in "Acont" and "Bcont";
-	*				  7. Prints "Acont" and "Bcont";
-	*				  8. Converts the continuous model ("Acont" and "Bcont") to a discrete model ans stores in "Adisc" and "Bdisc";
-	*				  9. Prints "Adisc" and "Bdisc";
-	*				  10. Calls the RLQR() function with the parameters obtained as arguments and updates "L", "Krlqr" and "P";
-	*				  11. Computes the RLQR control law and prints it;
-	*				  12. Computes the 4x1 input vector based on the formulation obtained from state space error method;
-	*				  13. Prints the input vector;
-	*                 14. Stabilishes a condition, with 'threshold', that defines a tolerance for position error;
-	*                 15. Saturates each element of the input vector based on limits of the real actuator;
-	*/
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	Vector4d Drone::getLQRControlLaw (void) {
-
-			Vector4d xError,dxError,dx, dxDesired, d2xDesired,u;
-			Vector8d x;
-
-			xError.head(3) = positionError;
-			xError(3) = yawError;
-
-			dx.head(3) = dPosition;
-			dx(3) = dYaw;
-
-			dxError.head(3) = dPositionError;
-			dxError(3) = dYawError;
-
-			dxDesired.head(3) = dPositionDesired;
-			dxDesired(3) 	  = dYawDesired;
-
-			d2xDesired.head(3) = d2PositionDesired;
-			d2xDesired(3) = d2YawDesired;
-
-			x << dxError, xError;
-
-			Matrix4d Rr;
-			Matrix8d Acont,Adisc,Qr;
-			Matrix8x4 Bcont,Bdisc;
-			Matrix4x8 Klqr;
-
-			Rr = 0.0001*Rr.Identity();
-			Qr = 0.05*Qr.Identity();
-
-			// Rr = 0.0001*Rr.Identity();
-			// Qr = 0.05*Qr.Identity();
-
-			Klqr <<   19.2462,         0,        0,         0,   18.4566,         0,         0,         0,
-        					0,   19.2653,        0,         0,         0,   18.4532,         0,         0,
-        					0,         0,  16.8239,         0,         0,         0,   18.9011,         0,
-        					0,         0,        0,   17.4210,         0,         0,         0,   18.7914;
-
-			Klqr << 0.1*Klqr;			        					
-
-			u = -Klqr*x;
-
-			// cout << "Virtual Input u = " << u << endl;
-
-			// input = F1.inverse()*(u + d2xDesired + F2*Rotation.transpose()*dx);
-			input = F1.inverse()*(u + d2xDesired + F2*Rotation.transpose()*dxDesired);
-
-			cout << "Real input = " << input << endl;
-
-			for(int i=0; i < 4;i++){
-
-				if(abs(xError(i)) < threshold(i)){
-					input(i) = 0.0;
-				}
-
-				if(abs(input(i)) > inputRange(i)){
-					if(input(i) > 0){
-						input(i) = inputRange(i);
-					} else {
-						input(i) = -inputRange(i);
-					}
-				}
-			}			
-			return input;
-		}
-
-	/* ###########################################################################################################################*/
-	/* ###########################################################################################################################*/
-	/* #####################################            REGULAR FUNCTIONS                 ########################################*/
-	/* ###########################################################################################################################*/
-	/* ###########################################################################################################################*/
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/* 		Function: RecursiveLQR
 	*	  Created by: Marlon
 	*  Last Modified: jrsbenevides - Removed L from function
@@ -1673,7 +1570,7 @@ namespace DRONE {
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/* 		Function: RLQR
-	*	  Created by: jrsbenevides
+	*	  Created by: jrsbenevides and dalsochio
 	*  Last Modified:
 	*
 	*  	 Description: 1. Receives the RLQR standard parameter matrices;
@@ -1685,113 +1582,34 @@ namespace DRONE {
 
 	void Drone::RLQR(Matrix8d& L, Matrix4x8& Krlqr, const Matrix8d& F, const Matrix8x4& G, const Matrix4d& Rr, const Matrix8d& Qr){
 
-		//static Matrix8d P; <- That would create a single Matrix accessible for all objects
-		//w <- can be computed outside RLQR function
-		
-		// Vector8d H;
-		// // Matrix8x4 H;
-
-		// Vector1d8 Ef;
-		// Vector1d4 Eg;
-
-		// Matrix4d Rrinv = Rr.inverse(); //For some reason I could not make Rr.inverse() directly into M.
-		// Matrix8d Finc;
-		// Matrix8x4 Ginc;
-		// Matrix9d sigma;
-		// Matrix9d8 Fest,Iest;
-		// Matrix9d4 Gest;
-		// MatrixSizeV V;
-		// MatrixSizeM M;
-		// MatrixSizeU U;
-		// MatrixSizeMcal Mcal;
-
-		// double lambda; //,lambdaAux;
-		// double delta = 1*randwithin(-1,1);
-
-		// const int n = 8; //n of rows - F
-		// const int m = 4; //n of columns - G
-		// const int l = 1; //n of rows - Ef
-		// const int t = n+1;
-		// long double mi = 1e15;
-
-
-		// H  << 1, 1, 1, 1, 0, 0, 0, 0;
-		// // H = H.Zero();
-
-		// // H.block<4,4>(0,0) << MatrixXd::Identity(4,4);
-		
-		// // H.block<2,2>(0,0) << 1,1,
-		// // 					 1,1;
-
-		// Ef << 0.01, 0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1;
-		// Eg << 0.1, 0.1, 0.1, 0.1;
-		// H  *= 0.5;
-		// Ef *= 350;
-		// Eg *= 25;
-
-
-		// //lambdaAux = mi*H.transpose()*H;
-		// //lambda = lambdaAux.norm() + 0.01;
-
-		// lambda = mi*H.transpose()*H + 0.01;
-
-		// sigma << (1/mi)*MatrixXd::Identity(8,8)-(1/lambda)*H*H.transpose(), MatrixXd::Zero(8,1),
-		// 		 MatrixXd::Zero(1,8),										(1/lambda);
-
-		// Finc = F + delta*H*Ef;
-		// Ginc = G + delta*H*Eg;
-
-		// Fest << F, Ef;
-		// Gest << G, Eg;
-		// Iest << MatrixXd::Identity(n,n), MatrixXd::Zero(l,n);
-
-		// V << MatrixXd::Zero(n+m,2*n+m),
-		// 	 MatrixXd::Zero(n,n+m), -MatrixXd::Identity(n,n),
-		// 	 MatrixXd::Zero(t,n+m), Fest,
-		// 	 MatrixXd::Identity(n+m,n+m),MatrixXd::Zero(n+m,n);
-
-		// U << MatrixXd::Zero(12,8),
-		// 	 -MatrixXd::Identity(8,8),
-		// 	 Fest,
-		// 	 MatrixXd::Zero(12,8);
-
-
-		// M << P.inverse(), 		   	  MatrixXd::Zero(n,n+m+t),						MatrixXd::Identity(n,n),		MatrixXd::Zero(n,m),
-		// 	 MatrixXd::Zero(m,n),  	  Rrinv,			                			MatrixXd::Zero(m,2*n+t),		MatrixXd::Identity(m,m),
-		// 	 MatrixXd::Zero(n,n+m),							   Qr.inverse(),		MatrixXd::Zero(n,n+m+t),
-		// 	 MatrixXd::Zero(t,2*n+m),						 						sigma, 		   	   Iest,	-Gest,
-		// 	 MatrixXd::Identity(n,n), MatrixXd::Zero(n,n+m), 					    Iest.transpose(),  MatrixXd::Zero(n,n+m),
-		// 	 MatrixXd::Zero(m,n), 	  MatrixXd::Identity(m,m), MatrixXd::Zero(m,n), -Gest.transpose(), MatrixXd::Zero(m,n+m);
-
-
-
-		////Marlon
-		Matrix8x4 H;
         double alpha;
         double beta;
         double gamma;
 
         Matrix4x8 Ef;
         Matrix4d Eg, Efaux0, Efaux1, auxLambda;
+        Matrix4d Rrinv = Rr.inverse(); 
 
-        Matrix4d Rrinv = Rr.inverse(); //For some reason I could not make Rr.inverse() directly into M.
         Matrix8d Finc;
         Matrix8x4 Ginc;
+        Matrix8x4 H;
+        
         Matrix12x12 sigma;
         Matrix12x8 Iest;
         Matrix12x8 Fest;
         Matrix12x4 Gest;
+        
         MatrixSizeV1 V;
         MatrixSizeM1 M;
         MatrixSizeU1 U;
         MatrixSizeMcal Mcal;
 
-        double lambda; //,lambdaAux;
+        double lambda;
         double delta = 1*randwithin(-1,1);
 
-        const int n = 8; //n of rows - F
-        const int m = 4; //n of columns - G
-        const int l = 4; //n of rows - Ef
+        const int n = 8; //# of rows - F
+        const int m = 4; //# of columns - G
+        const int l = 4; //# of rows - Ef
         const int t = n+4;
 
         long double mi = 1e15;
@@ -1802,30 +1620,10 @@ namespace DRONE {
               0, 0, 1, 0,
               0, 0, 0, 1,
               MatrixXd::Zero(4,4);
-        // H = H.Zero();
 
-        // H.block<4,4>(0,0) << MatrixXd::Identity(4,4);
-        
-        // H.block<2,2>(0,0) << 1,1,
-        //                      1,1;
-
-        // OLD GAINS BACK 14/06
-        // alpha = 1;
-        // beta = 1100;
-        // gamma = 0.975;
-
-        // NEW GAINS 18/06
         alpha = 0.295;
         beta  = 0.125;
         gamma = 0.285;
-
-        // NEW GAINS 15/06
-        // alpha = 0.155;
-        // beta  = 0.1;
-        // gamma = 0.15;
-
-
-
 
         Efaux0 << Qr.block<4,4>(0,0);
         Efaux1 << Qr.block<4,4>(4,4);
@@ -1833,20 +1631,11 @@ namespace DRONE {
         Ef << alpha*Efaux0, gamma*Efaux1;
         Eg << beta*Rr;
 
-
-        //lambdaAux = mi*H.transpose()*H;
-        //lambda = lambdaAux.norm() + 0.01;
-
         auxLambda = mi*H.transpose()*H;
         lambda = auxLambda.norm() + 0.01;
 
         sigma << (1/mi)*MatrixXd::Identity(8,8)-(1/lambda)*H*H.transpose(), MatrixXd::Zero(8,4),
                  MatrixXd::Zero(4,8),                         (1/lambda)*MatrixXd::Identity(4,4);
-
-
-        // // RLQR Reduced
-        // sigma << MatrixXd::Zero(12,12);
-
 
         Finc = F + delta*H*Ef;
         Ginc = G + delta*H*Eg;
@@ -1886,7 +1675,7 @@ namespace DRONE {
 	/* 		Function: rand within
 	*	  Created by: jrsbenevides
 	*  Last Modified:
-	*
+	*  	 Description: Computes a random value between two numbers based on a uniform distribution.
 	*  	 Description: 1. Receives two parameters (upper and bottom limits) for updates the contraction matrix within RLQR;
 	*				  2. Computes difference between upper and bottom limits (double) and stores as "range";
 	* 				  3. Returns a result of an operation that involves "floor", "range" and a random number (rand funcion);
@@ -1904,7 +1693,7 @@ namespace DRONE {
 	*	  Created by: jrsbenevides
 	*  Last Modified:
 	*
-	*  	 Description: * not used;
+	*  	 Description: Function to be used in future versions only;
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1918,5 +1707,4 @@ namespace DRONE {
 			    double mul = sqrt(-2.0 * log(s) / s);
 			    return mean + stdDev * u * mul;
 	}
-
 } // namespace DRONE

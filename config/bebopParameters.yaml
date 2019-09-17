@@ -15,7 +15,7 @@ f: 0.008       # 0.008 #0.003 #0.0005
 #"RecursiveLQR" = Recursive LQR
 #"Hinfinite"    = H-Infinite Controller
 	
-controlSelect: "Hinfinite"
+controlSelect: "RLQR"
 
 #"IMU" = IMU
 #"VICON"  = VICON
@@ -126,8 +126,8 @@ Kd: [-1.50, -1.50, -2.00, 0]
 # "wayPoint"        = set point without acc and vel desired
 # "ident"           = Identification Flight = circleXY (30s) + sinus Z(30s) + sinus Yaw (remaining time)
 
-trajectory: "straightLine"
-velMed: 0.25
+trajectory: "circleXY"
+velMed: 0.2
 amplitude: 0.5
 
 # In case we select "straightLine", we set poseDesired as: [Xd[m], Yd[m], Zd[m], Yawd[rad], Time[s]]

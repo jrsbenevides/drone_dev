@@ -18,8 +18,6 @@
 #include "drone/definitions.h"
 #include "drone/operations.h"
 
-//using namespace angles;
-
 using namespace DRONE::Types;
 
 namespace DRONE {
@@ -28,11 +26,11 @@ namespace DRONE {
 
 		protected:
 
+			int  isEKFonline;
+			int  updateRateEKF;
 			bool isOdomStarted;
 			bool isControllerStarted;
 			bool isViconStarted;
-			int  isEKFonline;
-			int  updateRateEKF;
 			bool isFirstEKFit;
 			bool isDroneFlying;
 			bool tokenEKF;
@@ -45,15 +43,15 @@ namespace DRONE {
 			Vector3axes dPositionDesired;
 			Vector3axes dPositionError;
 			Vector3axes d2PositionDesired;
-
 			Vector3axes dRPY;
-
-			Vector4d 	cmdvelMsg;
-
-			VectorQuat 	orientation;
 			Vector3axes linearVel;
 			Vector3axes angularVel;
 			Vector3axes rpy;
+			
+			Vector4d 	cmdvelMsg;
+
+			VectorQuat 	orientation;
+			
 
 			double roll;
 			double pitch;
@@ -65,9 +63,7 @@ namespace DRONE {
 			double dYawDesired;
 			double dYawError;
 			double d2YawDesired;
-
-
-			double pastTime; //Qual o tipo de variável do tempo??? - CORRIGIR CASO ERRO!
+			double pastTime;
 
 			Matrix3d RotGlobal;
 			
@@ -104,7 +100,6 @@ namespace DRONE {
 
 			double amplitude;
 			double velMed;
-
 			double timeNow;
 			double timePast;
 			double deltaTime;
@@ -172,6 +167,8 @@ namespace DRONE {
 			Vector3axes getRPY(void);
 			Vector3axes getLinearVelVicon(const Vector3axes& posCurrent, const Vector3axes& posPast, const double& timeNow, const double& timePast);
 			Vector3axes getAngularVelVicon(const VectorQuat& orientCurrent, const VectorQuat& orientPast, const double& timeNow, const double& timePast);
+			Vector3axes DvKalman(const Vector3axes& posCurrent, const double& timeNow, const double& timePast);		
+			Vector3axes DwKalman(const VectorQuat& orientCurrent, const double& timeNow, const double& timePast);
 
 			Vector4d 	getXIntError(void);
 			Vector4d 	getHinfControlLaw (void); 		  // H-Infinite Controller
@@ -182,26 +179,28 @@ namespace DRONE {
 			Vector4d 	getRecursiveLQRControlLaw (void); // Recursive LQR
 			Vector4d 	getThreshold(void);
 			Vector4d 	getInputRange(void);
-						
+			Vector4d 	getCmdVel(void);		
+
 			Vector8d 	getK(void);
 			Vector8d 	getKstart(void);
 
 			Vector9d 	getKalmanX(void);
-			Matrix9d 	getKalmanP(void);
-			Vector3axes DvKalman(const Vector3axes& posCurrent, const double& timeNow, const double& timePast);
 			Vector9d 	getKalmanXAngular(void);
+			Matrix9d 	getKalmanP(void);
 			Matrix9d 	getKalmanPAngular(void);
-			Vector3axes DwKalman(const VectorQuat& orientCurrent, const double& timeNow, const double& timePast);
+
 			Vector32x1	getXfromEKF(void);
-			Vector4d 	getCmdVel(void);		
 			
-			void 		initDroneParam(void);
-			void 		RLQR(Matrix8d& L, Matrix4x8& Krlqr, const Matrix8d& F, const Matrix8x4& G, const Matrix4d& Rr, const Matrix8d& Qr);
-			void 		RecursiveLQR(Matrix4x8& Klqr, const Matrix8d& F, const Matrix8x4& G, const Matrix4d& Rr, const Matrix8d& Qr);
-			bool 		getIsOdomStarted(void);
-			bool 		getIsViconStarted(void);
 			int 		getIsEKFonline(void);
 			int 		getUpdateRateEKF(void);
+
+			void 		initDroneParam(void);
+			void 		inputSaturation(Vector4d& input);
+			void 		RLQR(Matrix8d& L, Matrix4x8& Krlqr, const Matrix8d& F, const Matrix8x4& G, const Matrix4d& Rr, const Matrix8d& Qr);
+			void 		RecursiveLQR(Matrix4x8& Klqr, const Matrix8d& F, const Matrix8x4& G, const Matrix4d& Rr, const Matrix8d& Qr);
+			
+			bool 		getIsOdomStarted(void);
+			bool 		getIsViconStarted(void);			
 			bool 		getIsFlying(void);
 			bool 		getEKFToken(void);
 	};
