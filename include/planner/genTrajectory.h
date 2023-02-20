@@ -18,58 +18,53 @@
 #include "nav_msgs/Odometry.h"
 #include "sensor_msgs/Joy.h"
 #include "drone/drone.h"
+#include "planner/trajectoryTypes.hpp"
 #include <cmath>
 #include <sstream>
 #include <string>
 #include <iostream>
 
-using namespace std;
+#define PRINT_LOG 0
 
 namespace DRONE {
 
-	class Planner {
+class Planner {
 
-	    ros::NodeHandle n;
-	    ros::Publisher  waypoint_publisher;
-	    ros::Subscriber joy_subscriber;
+	public:
 
-	  private:
-
-	  	bool   isControlStarted;
-		bool   isFirstTimePass;	  	
-
-		double PI;
-		double t;
-		double wAng;
-		double startTime;
-	  
-	  public:
+	ros::NodeHandle n;
+	ros::Publisher  waypoint_publisher;
+	ros::Subscriber joy_subscriber;
 		
-		double 		amplitude;
-		double 		velMed;
-		string 		trajectory;
-		VectorFive 	poseDesired;
-		Vector3axes cTx, cTy,cTz, cTyaw;
-
-		Planner();
-		~Planner ();
+	Planner();
+	~Planner ();
 		
-		void initPlanner(void);
-		void setTrajectory(const string& trajectoryInput);
-		void setIsControlStarted(bool state);
-		void setIsFirstTimePass(bool state);
-		void setposeDesired(VectorFive poseDesiredValue);
-		void setTrajectoryCoefficients(void);
-		bool getIsControlStarted(void);
-		bool getIsFirstTimePass(void);
-		VectorFive getposeDesired(void);
-		void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
-		void loadTopics(ros::NodeHandle &n);
-		void loadSettings(ros::NodeHandle &n);
-		void refreshWang(void);
-		void TrajPlanner(void);
-		void angle2quatZYX(VectorQuat& q, const double& yaw, const double& pitch, const double& roll);
-	};
+	void init(void);
+	void setIsControlStarted(bool state);
+	bool getIsControlStarted(void);
+	void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
+	void loadTopics(ros::NodeHandle &n);
+	void loadSettings(ros::NodeHandle &n);
+	void TrajPlanner(void);
+	void angle2quatZYX(VectorQuat& q, const double& yaw, const double& pitch, const double& roll);
+
+private:
+
+	void setposeDesired(VectorFive poseDesiredValue);
+
+	void planEightShape(nav_msgs::Odometry& goal, float32 timeSpent);
+	void planCircle(nav_msgs::Odometry& goal, float32 timeSpent);
+	void planIdentification(nav_msgs::Odometry& goal, float32 timeSpent);
+	void planStraightLine(nav_msgs::Odometry& goal, float32 timeSpent);
+	void planWaypoint(nav_msgs::Odometry& goal);
+
+	bool m_isControlStarted;
+	bool m_isFirstTimePass;
+
+	double m_startTime;
+
+	TrajectoryParameters m_parameters;
+};
 } // namespace DRONE
 
 

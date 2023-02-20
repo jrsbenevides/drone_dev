@@ -27,73 +27,71 @@
 #include <tf/transform_broadcaster.h>
 
 
-using namespace std;
-
 namespace DRONE {
 
-	class System {
+class System {
 
-	    ros::NodeHandle n;
+	ros::NodeHandle n;
 
-		ros::Publisher cmd_vel_publisher;
-		ros::Publisher transfPosition_publisher;
+	ros::Publisher cmd_vel_publisher;
+	ros::Publisher transfPosition_publisher;
 
-		ros::Subscriber odom_subscriber;
-		ros::Subscriber waypoint_subscriber;
-		ros::Subscriber fix_subscriber;
-		ros::Subscriber joy_subscriber;
-		ros::Subscriber vicon_subscriber;
+	ros::Subscriber odom_subscriber;
+	ros::Subscriber waypoint_subscriber;
+	ros::Subscriber fix_subscriber;
+	ros::Subscriber joy_subscriber;
+	ros::Subscriber vicon_subscriber;
 
-	  private:
+	private:
 	  
-	  	double wAng;	
+	double wAng;
 
-	  public:
+	public:
 		
-		System();
-		~System ();
+	System();
+	~System ();
 
-		void control();
+	void control();
 		
-		long int count;
-		long int countEKF;
+	long int count;
+	long int countEKF;
 		
-		bool 	 flagEnable;
-		bool 	 flagControllerStarted;
-		bool 	 flagTwist;
+	bool 	 flagEnable;
+	bool 	 flagControllerStarted;
+	bool 	 flagTwist;
 		
-		double 	 PI;
-		double 	 vxAmpl;
-		double 	 vyAmpl;
-		double 	 vzAmpl;
-		double 	 angAmpl;
-		double 	 f;
-		double 	 amplitude;
-		double 	 velMed;
+	double 	 PI;
+	double 	 vxAmpl;
+	double 	 vyAmpl;
+	double 	 vzAmpl;
+	double 	 angAmpl;
+	double 	 f;
+	double 	 amplitude;
+	double 	 velMed;
 		
-		string 	 trajectory;
-		string   controlSelect;
-		string   sensorSelect;
+	string	 trajectory;
+	string   controlSelect;
+	string   sensorSelect;
 
-		Drone    drone;
+	Drone    drone;
 
 
-		void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
-		void odomCallback(const nav_msgs::Odometry::ConstPtr& odom);
-		void waypointCallback(const nav_msgs::Odometry::ConstPtr& waypoint); //alterado
-		void viconCallback(const geometry_msgs::TransformStamped::ConstPtr& vicon);
-		void globalToLocalPosition(const Vector3axes& positionValue, const VectorQuat& orientationValue, const Vector3axes& linearVelValue,const Vector3axes& angularVelValue);
-		void initDroneSystemParam(void);
-		void loadTopics(ros::NodeHandle &n);
-		void loadSettings(ros::NodeHandle &n);
-		void setTrajectory(const string& trajectoryInput);
-		void setControlSelect(const string& controlSelectInput);
-		void setSensorSelect(const string& sensorSelectInput);
-		void setAmplitude(const double& amplitudeValue);
-		void setVelMed(const double& velMedValue);
-		void bootVicon(const double& timeValue);
-	};
-}
+	void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
+	void odomCallback(const nav_msgs::Odometry::ConstPtr& odom);
+	void waypointCallback(const nav_msgs::Odometry::ConstPtr& waypoint); //alterado
+	void viconCallback(const geometry_msgs::TransformStamped::ConstPtr& vicon);
+	void globalToLocalPosition(const Vector3axes& positionValue, const VectorQuat& orientationValue, const Vector3axes& linearVelValue,const Vector3axes& angularVelValue);
+	void initDroneSystemParam(void);
+	void loadTopics(ros::NodeHandle &n);
+	void loadSettings(ros::NodeHandle &n);
+	void setTrajectory(const string& trajectoryInput);
+	void setControlSelect(const string& controlSelectInput);
+	void setSensorSelect(const string& sensorSelectInput);
+	void setAmplitude(const double& amplitudeValue);
+	void setVelMed(const double& velMedValue);
+	void bootVicon(const double& timeValue);
+}; /*class System */
+} /*namespace DRONE*/
 
 
 #endif /* BEBOP_DEV_INCLUDE_DRONE_DRONESYSTEM_H_ */
