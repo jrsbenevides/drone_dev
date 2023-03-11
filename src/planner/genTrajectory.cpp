@@ -13,12 +13,6 @@ namespace DRONE {
 	Planner::Planner() {
 
 		init();
-		
-		loadTopics(n);
-		loadSettings(n);
-
-		m_parameters.setTrajectoryCoefficients();
-		m_parameters.updateAngularFrequency();
 
    		srand (time(NULL)); /* initialize random seed: */
 	}
@@ -75,6 +69,12 @@ namespace DRONE {
 		poseDesired	= poseDesired.Zero();
 		setIsControlStarted(false);
 		m_isFirstTimePass = true;
+
+		loadTopics(n);
+		loadSettings(n);
+
+		m_parameters.setTrajectoryCoefficients();
+		m_parameters.updateAngularFrequency();
 	}	
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,14 +106,14 @@ namespace DRONE {
 	void Planner::loadSettings(ros::NodeHandle &n)
 	{
 
-		double amplitude;
+		float32 amplitude;
 		if (n.getParam("/drone/amplitude",amplitude)) 
 		{
 			m_parameters.amplitude = amplitude;
 			cout << "amplitude = " << amplitude << endl;
 		}
 
-		double velMed;
+		float32 velMed;
 		if (n.getParam("/drone/velMed",velMed)) 
 		{
 			m_parameters.averageLinearSpeed = velMed;
@@ -128,7 +128,7 @@ namespace DRONE {
 
 		}
 		
-		vector<double> poseDesired;
+		vector<float32> poseDesired;
 		if (n.getParam("/drone/poseDesired",poseDesired)) 
 		{
 			setposeDesired(VectorFive::Map(&poseDesired[0],5));
@@ -173,21 +173,21 @@ namespace DRONE {
 		std::cout << "Eight-Shaped Trajectory" << std::endl;
 #endif
 		goal.pose.pose.position.x = m_parameters.amplitude * sin(m_parameters.angularFrequency * timeSpent);
-		goal.pose.pose.position.y = 0.5f * m_parameters.amplitude * sin(2 * m_parameters.angularFrequency * timeSpent);
-		goal.pose.pose.position.z = 0.0f;
+		goal.pose.pose.position.y = 0.5F * m_parameters.amplitude * sin(2 * m_parameters.angularFrequency * timeSpent);
+		goal.pose.pose.position.z = 0.0F;
 		
 		goal.twist.twist.linear.x = m_parameters.angularFrequency * m_parameters.amplitude * cos(m_parameters.angularFrequency * timeSpent);
 		goal.twist.twist.linear.y = m_parameters.angularFrequency * m_parameters.amplitude * cos(2 * m_parameters.angularFrequency * timeSpent);
-		goal.twist.twist.linear.z = 0.0f;
+		goal.twist.twist.linear.z = 0.0F;
 		
-		goal.pose.pose.orientation.x = 0.0f;
-		goal.pose.pose.orientation.y = 0.0f;
-		goal.pose.pose.orientation.z = 0.0f;
-		goal.pose.pose.orientation.w = 1.0f;
+		goal.pose.pose.orientation.x = 0.0F;
+		goal.pose.pose.orientation.y = 0.0F;
+		goal.pose.pose.orientation.z = 0.0F;
+		goal.pose.pose.orientation.w = 1.0F;
 		
-		goal.twist.twist.angular.x = 0.0f;
-		goal.twist.twist.angular.y = 0.0f;
-		goal.twist.twist.angular.z = 0.0f;
+		goal.twist.twist.angular.x = 0.0F;
+		goal.twist.twist.angular.y = 0.0F;
+		goal.twist.twist.angular.z = 0.0F;
 	}
 
 	void Planner::planCircle(nav_msgs::Odometry& goal, float32 timeSpent)
@@ -204,20 +204,20 @@ namespace DRONE {
 #endif
 		goal.pose.pose.position.x = m_parameters.amplitude * cos(m_parameters.angularFrequency * timeSpent);
 		goal.pose.pose.position.y = m_parameters.amplitude * sin(m_parameters.angularFrequency * timeSpent);
-		goal.pose.pose.position.z = (m_parameters.trajectory & circleZXY) ? goal.pose.pose.position.y : 0.f;
+		goal.pose.pose.position.z = (m_parameters.trajectory & circleZXY) ? goal.pose.pose.position.y : 0.F;
 
-		goal.twist.twist.linear.x = -1.f * m_parameters.angularFrequency * m_parameters.amplitude * sin(m_parameters.angularFrequency * timeSpent);
+		goal.twist.twist.linear.x = -1.F * m_parameters.angularFrequency * m_parameters.amplitude * sin(m_parameters.angularFrequency * timeSpent);
 		goal.twist.twist.linear.y = m_parameters.angularFrequency * m_parameters.amplitude * cos(m_parameters.angularFrequency * timeSpent);
-		goal.twist.twist.linear.z = (m_parameters.trajectory & circleZXY) ? goal.twist.twist.linear.y : 0.f;
+		goal.twist.twist.linear.z = (m_parameters.trajectory & circleZXY) ? goal.twist.twist.linear.y : 0.F;
 
-		goal.pose.pose.orientation.x = 0.0f;
-		goal.pose.pose.orientation.y = 0.0f;
-		goal.pose.pose.orientation.z = 0.0f;
-		goal.pose.pose.orientation.w = 1.0f;
+		goal.pose.pose.orientation.x = 0.0F;
+		goal.pose.pose.orientation.y = 0.0F;
+		goal.pose.pose.orientation.z = 0.0F;
+		goal.pose.pose.orientation.w = 1.0F;
 
-		goal.twist.twist.angular.x = 0.0f;
-		goal.twist.twist.angular.y = 0.0f;
-		goal.twist.twist.angular.z = 0.0f;
+		goal.twist.twist.angular.x = 0.0F;
+		goal.twist.twist.angular.y = 0.0F;
+		goal.twist.twist.angular.z = 0.0F;
 	}
 
 	void Planner::planIdentification(nav_msgs::Odometry& goal, float32 timeSpent)
@@ -225,47 +225,47 @@ namespace DRONE {
 #if PRINT_LOG
 		std::cout << "Identification - Trajectory" << std::endl;
 #endif
-		if (timeSpent < 40.f)
+		if (timeSpent < 40.F)
 		{
 			goal.pose.pose.position.x = 0.5 * m_parameters.amplitude * (cos(m_parameters.angularFrequency * timeSpent) + cos(timeSpent));
 			goal.pose.pose.position.y = 0.5 * m_parameters.amplitude * (sin(m_parameters.angularFrequency * timeSpent) + sin(timeSpent));
-			goal.pose.pose.position.z = 0.f;
+			goal.pose.pose.position.z = 0.F;
 
 			goal.twist.twist.linear.x = -0.5 * m_parameters.amplitude * (m_parameters.angularFrequency * sin(m_parameters.angularFrequency * timeSpent) + sin(timeSpent));
 			goal.twist.twist.linear.y = 0.5 * m_parameters.amplitude * (m_parameters.angularFrequency * cos(m_parameters.angularFrequency * timeSpent) + cos(timeSpent));
-			goal.twist.twist.linear.z = 0.f;
+			goal.twist.twist.linear.z = 0.F;
 
-			goal.pose.pose.orientation.x = 0.0f;
-			goal.pose.pose.orientation.y = 0.0f;
-			goal.pose.pose.orientation.z = 0.0f;
-			goal.pose.pose.orientation.w = 1.0f;
+			goal.pose.pose.orientation.x = 0.0F;
+			goal.pose.pose.orientation.y = 0.0F;
+			goal.pose.pose.orientation.z = 0.0F;
+			goal.pose.pose.orientation.w = 1.0F;
 
-			goal.twist.twist.angular.x = -0.5f * m_parameters.amplitude * (m_parameters.angularFrequency * m_parameters.angularFrequency * cos(m_parameters.angularFrequency * timeSpent) + cos(timeSpent));
-			goal.twist.twist.angular.y = -0.5f * m_parameters.amplitude * (m_parameters.angularFrequency * m_parameters.angularFrequency * sin(m_parameters.angularFrequency * timeSpent) + sin(timeSpent));
-			goal.twist.twist.angular.z = 0.0f;
+			goal.twist.twist.angular.x = -0.5F * m_parameters.amplitude * (m_parameters.angularFrequency * m_parameters.angularFrequency * cos(m_parameters.angularFrequency * timeSpent) + cos(timeSpent));
+			goal.twist.twist.angular.y = -0.5F * m_parameters.amplitude * (m_parameters.angularFrequency * m_parameters.angularFrequency * sin(m_parameters.angularFrequency * timeSpent) + sin(timeSpent));
+			goal.twist.twist.angular.z = 0.0F;
 
 		}
-		else if (timeSpent < 80.f) 
+		else if (timeSpent < 80.F) 
 		{
 
-			timeSpent -= 40.f;
+			timeSpent -= 40.F;
 
-			goal.pose.pose.position.x = 0.f;
-			goal.pose.pose.position.y = 0.f;
-			goal.pose.pose.position.z = 0.5f * m_parameters.amplitude * (sin(m_parameters.angularFrequency * timeSpent + sin(timeSpent)));
+			goal.pose.pose.position.x = 0.F;
+			goal.pose.pose.position.y = 0.F;
+			goal.pose.pose.position.z = 0.5F * m_parameters.amplitude * (sin(m_parameters.angularFrequency * timeSpent + sin(timeSpent)));
 f
-			goal.twist.twist.linear.x = 0.f;
-			goal.twist.twist.linear.y = 0.f;
-			goal.twist.twist.linear.z = 0.5f * m_parameters.amplitude * (m_parameters.angularFrequency * cos(m_parameters.angularFrequency * timeSpent) + cos(timeSpent));
+			goal.twist.twist.linear.x = 0.F;
+			goal.twist.twist.linear.y = 0.F;
+			goal.twist.twist.linear.z = 0.5F * m_parameters.amplitude * (m_parameters.angularFrequency * cos(m_parameters.angularFrequency * timeSpent) + cos(timeSpent));
 
-			goal.pose.pose.orientation.x = 0.0f;
-			goal.pose.pose.orientation.y = 0.0f;
-			goal.pose.pose.orientation.z = 0.0f;
-			goal.pose.pose.orientation.w = 1.0f;
+			goal.pose.pose.orientation.x = 0.0F;
+			goal.pose.pose.orientation.y = 0.0F;
+			goal.pose.pose.orientation.z = 0.0F;
+			goal.pose.pose.orientation.w = 1.0F;
 
-			goal.twist.twist.angular.x = 0.f;
-			goal.twist.twist.angular.y = 0.f;
-			goal.twist.twist.angular.z = -0.5f * m_parameters.amplitude * (m_parameters.angularFrequency * m_parameters.angularFrequency * sin(m_parameters.angularFrequency * timeSpent) + sin(timeSpent));
+			goal.twist.twist.angular.x = 0.F;
+			goal.twist.twist.angular.y = 0.F;
+			goal.twist.twist.angular.z = -0.5F * m_parameters.amplitude * (m_parameters.angularFrequency * m_parameters.angularFrequency * sin(m_parameters.angularFrequency * timeSpent) + sin(timeSpent));
 
 		}
 		else 
@@ -273,27 +273,27 @@ f
 			VectorQuat quatDesired;
 			quatDesired = quatDesired.Zero();
 
-			timeSpent -=  80.f;
-			goal.pose.pose.position.x = 0.f;
-			goal.pose.pose.position.y = 0.f;
-			goal.pose.pose.position.z = 0.f;
+			timeSpent -=  80.F;
+			goal.pose.pose.position.x = 0.F;
+			goal.pose.pose.position.y = 0.F;
+			goal.pose.pose.position.z = 0.F;
 										 
-			goal.twist.twist.linear.x = 0.f;
-			goal.twist.twist.linear.y = 0.f;
-			goal.twist.twist.linear.z = 0.f;
+			goal.twist.twist.linear.x = 0.F;
+			goal.twist.twist.linear.y = 0.F;
+			goal.twist.twist.linear.z = 0.F;
 
-			yaw_desired = angles::normalize_angle(0.5f * 1.05f * (sin(m_parameters.angularFrequency * timeSpent) + sin(timeSpent)));
+			yaw_desired = angles::normalize_angle(0.5F * 1.05F * (sin(m_parameters.angularFrequency * timeSpent) + sin(timeSpent)));
 
-			angle2quatZYX(quatDesired, yaw_desired, 0.0f, 0.0f);
+			angle2quatZYX(quatDesired, yaw_desired, 0.0F, 0.0F);
 
 			goal.pose.pose.orientation.w = quatDesired(0);
 			goal.pose.pose.orientation.x = quatDesired(1);
 			goal.pose.pose.orientation.y = quatDesired(2);
 			goal.pose.pose.orientation.z = quatDesired(3);
 
-			goal.twist.twist.angular.x = -0.5f * 1.05f * (m_parameters.angularFrequency * m_parameters.angularFrequency * sin(m_parameters.angularFrequency * timeSpent) + sin(timeSpent));
-			goal.twist.twist.angular.y = 0.0f;
-			goal.twist.twist.angular.z = 0.5f * 1.05f * (m_parameters.angularFrequency * cos(m_parameters.angularFrequency * timeSpent) + cos(timeSpent));
+			goal.twist.twist.angular.x = -0.5F * 1.05F * (m_parameters.angularFrequency * m_parameters.angularFrequency * sin(m_parameters.angularFrequency * timeSpent) + sin(timeSpent));
+			goal.twist.twist.angular.y = 0.0F;
+			goal.twist.twist.angular.z = 0.5F * 1.05F * (m_parameters.angularFrequency * cos(m_parameters.angularFrequency * timeSpent) + cos(timeSpent));
 		}
 	}
 
@@ -304,19 +304,18 @@ f
 #endif
 		if (timeSpent <= poseDesired(4)) {
 
-			float t2, t3, t4, t5; 
-			t2 = timeSpent * timeSpent;
-			t3 = t2 * timeSpent;
-			t4 = t3 * timeSpent;
-			t5 = t4 * timeSpent;
+			float t2 = timeSpent * timeSpent;
+			float t3 = t2 * timeSpent;
+			float t4 = t3 * timeSpent;
+			float t5 = t4 * timeSpent;
 
 			goal.pose.pose.position.x = cTx(0) * t3 + cTx(1) * t4 + cTx(2) * t5;
 			goal.pose.pose.position.y = cTy(0) * t3 + cTy(1) * t4 + cTy(2) * t5;
 			goal.pose.pose.position.z = cTz(0) * t3 + cTz(1) * t4 + cTz(2) * t5;
 
-			goal.twist.twist.linear.x = 3.f * cTx(0) * t2 + 4 * cTx(1) * t3 + 5 * cTx(2) * t4;
-			goal.twist.twist.linear.y = 3.f * cTy(0) * t2 + 4 * cTy(1) * t3 + 5 * cTy(2) * t4;
-			goal.twist.twist.linear.z = 3.f * cTz(0) * t2 + 4 * cTz(1) * t3 + 5 * cTz(2) * t4;
+			goal.twist.twist.linear.x = 3.F * cTx(0) * t2 + 4 * cTx(1) * t3 + 5 * cTx(2) * t4;
+			goal.twist.twist.linear.y = 3.F * cTy(0) * t2 + 4 * cTy(1) * t3 + 5 * cTy(2) * t4;
+			goal.twist.twist.linear.z = 3.F * cTz(0) * t2 + 4 * cTz(1) * t3 + 5 * cTz(2) * t4;
 
 		}
 		else {
@@ -325,19 +324,19 @@ f
 			goal.pose.pose.position.y = poseDesired(1);
 			goal.pose.pose.position.z = poseDesired(2);
 
-			goal.twist.twist.linear.x = 0.f;
-			goal.twist.twist.linear.y = 0.f;
-			goal.twist.twist.linear.z = 0.f;
+			goal.twist.twist.linear.x = 0.F;
+			goal.twist.twist.linear.y = 0.F;
+			goal.twist.twist.linear.z = 0.F;
 		}
 
-		goal.pose.pose.orientation.x = 0.0f;
-		goal.pose.pose.orientation.y = 0.0f;
-		goal.pose.pose.orientation.z = 0.0f;
-		goal.pose.pose.orientation.w = 1.0f;
+		goal.pose.pose.orientation.x = 0.0F;
+		goal.pose.pose.orientation.y = 0.0F;
+		goal.pose.pose.orientation.z = 0.0F;
+		goal.pose.pose.orientation.w = 1.0F;
 
-		goal.twist.twist.angular.x = 0.0f;
-		goal.twist.twist.angular.y = 0.0f;
-		goal.twist.twist.angular.z = 0.0f;
+		goal.twist.twist.angular.x = 0.0F;
+		goal.twist.twist.angular.y = 0.0F;
+		goal.twist.twist.angular.z = 0.0F;
 	}
 	void Planner::planWaypoint(nav_msgs::Odometry& goal)
 	{
@@ -350,20 +349,20 @@ f
 		goal.pose.pose.position.z = poseDesired(2);
 
 		// Linear Velocity Desired
-		goal.twist.twist.linear.x = 0.f;
-		goal.twist.twist.linear.y = 0.f;
-		goal.twist.twist.linear.z = 0.f;
+		goal.twist.twist.linear.x = 0.F;
+		goal.twist.twist.linear.y = 0.F;
+		goal.twist.twist.linear.z = 0.F;
 
 		// Quaternioin Orientation Desired
-		goal.pose.pose.orientation.x = 0.0f;
-		goal.pose.pose.orientation.y = 0.0f;
-		goal.pose.pose.orientation.z = 0.0f;
-		goal.pose.pose.orientation.w = 1.0f;
+		goal.pose.pose.orientation.x = 0.0F;
+		goal.pose.pose.orientation.y = 0.0F;
+		goal.pose.pose.orientation.z = 0.0F;
+		goal.pose.pose.orientation.w = 1.0F;
 
 		// Angular Velocity Desired
-		goal.twist.twist.angular.x = 0.0f;
-		goal.twist.twist.angular.y = 0.0f;
-		goal.twist.twist.angular.z = 0.0f;
+		goal.twist.twist.angular.x = 0.0F;
+		goal.twist.twist.angular.y = 0.0F;
+		goal.twist.twist.angular.z = 0.0F;
 	}
 	
 	void Planner::TrajPlanner(void)
@@ -379,7 +378,7 @@ f
 				m_isFirstTimePass = false;
 			}
 
-			double t = ros::Time::now().toSec() - m_startTime;
+			float32 t = ros::Time::now().toSec() - m_startTime;
 
 #if PRINT_LOG
 			std::cout << "Current Time: " << t << std::endl;
@@ -413,8 +412,8 @@ f
 		else 
 		{
 			m_isFirstTimePass = true;
-			desiredGoal.pose.pose.position.x = 0.0f;
-			desiredGoal.pose.pose.position.y = 0.0f;
+			desiredGoal.pose.pose.position.x = 0.0F;
+			desiredGoal.pose.pose.position.y = 0.0F;
 		}
 
 #if PRINT_LOG
@@ -431,9 +430,9 @@ f
 	*  Last Modified: 
 	*
 	*  	 Description: Unused buttons were used to special functions. These features are described below:
-	*				  1. Button [14] = 'DIGITAL DOWN' = is responsible for resetting flag isOdomStarted. It allows the resetting of local
-						 frame. The flag is raised again by a function "setPosition0()" after reset is done.
-	*				  2. Button [6]  = 'SELECT' =  when kept pressed, allows controller to run.
+	*				  1. Button [14] = 'DIGITAL DOWN' = is responsible for resetting flag isOdomStarted. It allows the resetting 
+	*					 of local frame. The flag is raised again by a function "setPosition0()" after reset is done.
+	*				  2. Button [6]  = 'SELECT' =  when kept pressed, it allows the controller node to run.
 	*/
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////		
 

@@ -1,11 +1,11 @@
-
 #ifndef TRAJECTORYTYPES_HPP_
 #define TRAJECTORYTYPES_HPP_
 
+#include "drone/definitions.h"
+#include <string>
+
 namespace DRONE
 {
-
-static const double PI = 3.14159265359F;
 
 enum Trajectory
 {
@@ -22,9 +22,9 @@ class TrajectoryParameters
 {
 public:
 	
-	double	angularFrequency; //wAng
-	double	amplitude;
-	double 	averageLinearSpeed;
+	float32	angularFrequency;
+	float32	amplitude;
+	float32 averageLinearSpeed;
 	
 	VectorFive 	poseDesired;
 	
@@ -36,13 +36,13 @@ public:
 	Trajectory trajectory;
 
 	/*
-	* @brief Based on the chosen trajectory, this will update wAng, which should be the desired angular frequency.
+	* @brief Based on the chosen trajectory, this will update the desired angular frequency.
 	*/
-	inline double updateAngularFrequency()
+	float32 updateAngularFrequency()
 	{
 		if (trajectory & eightShape)
 		{
-			angularFrequency = 2 * PI * averageLinearSpeed / (6.097 * amplitude);
+			angularFrequency = 2 * M_PI * averageLinearSpeed / (6.097F * amplitude);
 		}
 		else
 		{
@@ -53,32 +53,33 @@ public:
 	/*
 	* @brief Loads the auxiliary trajectory coefficients. Needed for specific trajectories only.
 	*/
-	void setTrajectoryCoefficients(void) {
-		double x, y, z, yaw, tf, tf3, tf4, tf5;
-		x = poseDesired(0);
-		y = poseDesired(1);
-		z = poseDesired(2);
-		yaw = poseDesired(3);
-		tf = poseDesired(4);
-		tf3 = tf * tf * tf;
-		tf4 = tf3 * tf;
-		tf5 = tf4 * tf;
+	void setTrajectoryCoefficients(void) 
+	{
 
-		cTx(0) = 10 * x / tf3;
-		cTx(1) = -15 * x / tf4;
-		cTx(2) = 6 * x / tf5;
+		float32 x = poseDesired(0);
+		float32 y = poseDesired(1);
+		float32 z = poseDesired(2);
+		float32 yaw = poseDesired(3);
+		float32 tf = poseDesired(4);
+		float32 tf3 = tf * tf * tf;
+		float32 tf4 = tf3 * tf;
+		float32 tf5 = tf4 * tf;
 
-		cTy(0) = 10 * y / tf3;
-		cTy(1) = -15 * y / tf4;
-		cTy(2) = 6 * y / tf5;
+		cTx(0) = 10.F * x / tf3;
+		cTx(1) = -15.F * x / tf4;
+		cTx(2) = 6.F * x / tf5;
 
-		cTz(0) = 10 * z / tf3;
-		cTz(1) = -15 * z / tf4;
-		cTz(2) = 6 * z / tf5;
+		cTy(0) = 10.F * y / tf3;
+		cTy(1) = -15.F * y / tf4;
+		cTy(2) = 6.F * y / tf5;
 
-		cTyaw(0) = 10 * yaw / tf3;
-		cTyaw(1) = -15 * yaw / tf4;
-		cTyaw(2) = 6 * yaw / tf5;
+		cTz(0) = 10.F * z / tf3;
+		cTz(1) = -15.F * z / tf4;
+		cTz(2) = 6.F * z / tf5;
+
+		cTyaw(0) = 10.F * yaw / tf3;
+		cTyaw(1) = -15.F * yaw / tf4;
+		cTyaw(2) = 6.F * yaw / tf5;
 	}
 
 	/*
@@ -88,31 +89,31 @@ public:
 
 		Trajectory defaultTrajectory = circleXY;
 
-		if (trajectoryInput.compare("eightShape") == 0)
+		if (isStringEqual(trajectoryInput,"eightShape"))
 		{
 			trajectory = eightShape;
 		}
-		else if (trajectoryInput.compare("circleXY") == 0)
+		else if (isStringEqual(trajectoryInput, "circleXY"))
 		{
 			trajectory = circleXY;
 		}
-		else if (trajectoryInput.compare("ident") == 0)
+		else if (isStringEqual(trajectoryInput, "ident"))
 		{
 			trajectory = ident;
 		}
-		else if (trajectoryInput.compare("circleZXY") == 0)
+		else if (isStringEqual(trajectoryInput, "circleZXY"))
 		{
 			trajectory = circleZXY;
 		}
-		else if (trajectoryInput.compare("straightLine") == 0)
+		else if (isStringEqual(trajectoryInput, "straightLine"))
 		{
 			trajectory = straightLine;
 		}
-		else if (trajectoryInput.compare("wayPoint") == 0)
+		else if (isStringEqual(trajectoryInput, "wayPoint"))
 		{
 			trajectory = wayPoint;
 		}
-		else if (trajectoryInput.compare("followTruck") == 0)
+		else if (isStringEqual(trajectoryInput, "followTruck"))
 		{
 			trajectory = followTruck;
 		}
@@ -120,6 +121,16 @@ public:
 		{
 			trajectory = defaultTrajectory;
 		}
+	}
+
+private:
+
+	/*
+	* @brief Compares the content of a string and a char pointer
+	*/
+	static bool isStringEqual(const string& stringInput, const uint8* word)
+	{
+		return (stringInput.compare(word) == 0);
 	}
 }; // TrajectoryParameters
 

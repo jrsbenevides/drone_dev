@@ -117,10 +117,10 @@ namespace DRONE {
 
 		for(int i=1;i<=30;i++)
 		{
-		   inv = (1/(double)i);
+		   inv = (1.F/(double)i);
 		   aux *= inv*tS*Acont;
-		   Adisc = Adisc + aux;
-		   Bdaux = Bdaux + (1/(double)(i+1))*aux;
+		   Adisc += aux;
+		   Bdaux += (1.F/(double)(i+1))*aux;
 		}
 
 		Bdisc =  Bdaux*Bcont*tS;

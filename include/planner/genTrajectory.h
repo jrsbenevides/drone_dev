@@ -61,7 +61,7 @@ private:
 	bool m_isControlStarted;
 	bool m_isFirstTimePass;
 
-	double m_startTime;
+	float32 m_startTime;
 
 	TrajectoryParameters m_parameters;
 };
